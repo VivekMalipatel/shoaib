@@ -78,8 +78,11 @@
 <body>
     <header>
         <h1>MediConnect</h1>
-        <nav>
-            <a href="#" id="logout-btn" style="color: white; margin-left: 1rem;">Logout</a>
+        <nav class="navbar" style="display: flex; gap: 1rem;">
+            <a href="/patient-dashboard.html" style="color: white;">Dashboard</a>
+            <a href="/patient-appointments.html" style="color: white;">My Appointments</a>
+            <a href="/patient-find-doctors.html" style="color: white;">Find Doctors</a>
+            <a href="#" id="logout-btn" style="color: white;">Logout</a>
         </nav>
     </header>
 
@@ -100,7 +103,7 @@
                         <strong>Next Week, 2:30 PM</strong> - Dr. Johnson (Follow-up)
                     </div>
                 </div>
-                <button class="btn" style="margin-top: 1rem;">View All</button>
+                <a href="/patient-appointments.html"><button class="btn" style="margin-top: 1rem;">View All</button></a>
             </div>
 
             <div class="card">
@@ -125,7 +128,7 @@
                         <button class="btn btn-sm">Book</button>
                     </div>
                 </div>
-                <button class="btn" style="margin-top: 1rem;">View All Doctors</button>
+                <a href="/patient-find-doctors.html"><button class="btn" style="margin-top: 1rem;">View All Doctors</button></a>
             </div>
 
             <div class="card">

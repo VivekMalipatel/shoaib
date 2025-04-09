@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - MediConnect</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9fafb;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            padding: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .form-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .btn {
+            width: 100%;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #2563eb;
+        }
+        .error-message {
+            color: #ef4444;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+        }
+        .form-link {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .form-link a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        .form-link a:hover {
+            text-decoration: underline;
+        }
+        .doctor-fields {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MediConnect</h1>
+            <p>Create a new account</p>
+        </div>
+        
+        <div class="form-card">
+            <h2>Register</h2>
+            
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="role">Register as</label>
+                    <select id="role" name="role" required>
+                        <option value="patient">Patient</option>
+                        <option value="doctor">Doctor</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" name="fullName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone" required>
+                </div>
+                
+                <!-- Doctor-specific fields -->
+                <div id="doctor-fields" class="doctor-fields">
+                    <div class="form-group">
+                        <label for="specialization">Specialization</label>
+                        <input type="text" id="specialization" name="specialization">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="licenseNumber">License Number</label>
+                        <input type="text" id="licenseNumber" name="licenseNumber">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn">Register</button>
+                
+                <div id="error-message" class="error-message">
+                    Registration failed. Please check your information.
+                </div>
+            </form>
+            
+            <div class="form-link">
+                <a href="/auth.html">Already have an account? Sign in</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is already logged in
+            fetch('/api/user')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Not authenticated');
+                })
+                .then(user => {
+                    // User is logged in, redirect to appropriate dashboard
+                    if (user.role === 'doctor') {
+                        window.location.href = '/doctor-dashboard.html';
+                    } else {
+                        window.location.href = '/patient-dashboard.html';
+                    }
+                })
+                .catch(error => {
+                    console.log('User not authenticated, showing register form');
+                });
+            
+            // Toggle doctor-specific fields based on role selection
+            document.getElementById('role').addEventListener('change', function() {
+                const doctorFields = document.getElementById('doctor-fields');
+                if (this.value === 'doctor') {
+                    doctorFields.style.display = 'block';
+                    document.getElementById('specialization').setAttribute('required', '');
+                    document.getElementById('licenseNumber').setAttribute('required', '');
+                } else {
+                    doctorFields.style.display = 'none';
+                    document.getElementById('specialization').removeAttribute('required');
+                    document.getElementById('licenseNumber').removeAttribute('required');
+                }
+            });
+            
+            // Handle form submission
+            document.getElementById('register-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    role: document.getElementById('role').value,
+                    fullName: document.getElementById('fullName').value,
+                    username: document.getElementById('username').value,
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value,
+                    confirmPassword: document.getElementById('confirmPassword').value,
+                    phone: document.getElementById('phone').value
+                };
+                
+                // Add doctor-specific fields if doctor role is selected
+                if (formData.role === 'doctor') {
+                    formData.specialization = document.getElementById('specialization').value;
+                    formData.licenseNumber = document.getElementById('licenseNumber').value;
+                }
+                
+                // Validate passwords match
+                if (formData.password !== formData.confirmPassword) {
+                    document.getElementById('error-message').textContent = "Passwords do not match";
+                    document.getElementById('error-message').style.display = 'block';
+                    return;
+                }
+                
+                // Send registration request
+                fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData),
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(text || 'Registration failed');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(userData => {
+                    console.log('Registration successful:', userData);
+                    
+                    // Redirect based on user role
+                    if (userData.role === 'doctor') {
+                        window.location.href = '/doctor-dashboard.html';
+                    } else {
+                        window.location.href = '/patient-dashboard.html';
+                    }
+                })
+                .catch(error => {
+                    console.error('Registration error:', error);
+                    document.getElementById('error-message').textContent = error.message || "Registration failed";
+                    document.getElementById('error-message').style.display = 'block';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

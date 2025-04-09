@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Appointments - MediConnect</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafb;
+        }
+        header {
+            background-color: #1a365d;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .welcome-panel {
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #9ca3af;
+        }
+        .btn-secondary:hover {
+            background-color: #6b7280;
+        }
+        .btn-danger {
+            background-color: #ef4444;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+        .navbar {
+            display: flex;
+            gap: 1rem;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+        }
+        .appointment-list {
+            margin-top: 1rem;
+        }
+        .appointment-item {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .appointment-item:last-child {
+            border-bottom: none;
+        }
+        .appointment-details {
+            flex: 1;
+        }
+        .appointment-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .filter-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        select, input {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            margin-left: 0.5rem;
+        }
+        .badge-scheduled {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        .badge-completed {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .badge-cancelled {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 500px;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: 500;
+        }
+        h1, h2, h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>MediConnect</h1>
+        <nav class="navbar">
+            <a href="/patient-dashboard.html">Dashboard</a>
+            <a href="/patient-appointments.html">My Appointments</a>
+            <a href="/patient-find-doctors.html">Find Doctors</a>
+            <a href="#" id="logout-btn">Logout</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="welcome-panel">
+            <h2>My Appointments</h2>
+            <p>View and manage your upcoming and past appointments.</p>
+        </div>
+
+        <div class="card">
+            <div class="tabs">
+                <div class="tab active" data-tab="upcoming">Upcoming</div>
+                <div class="tab" data-tab="past">Past</div>
+                <div class="tab" data-tab="cancelled">Cancelled</div>
+            </div>
+
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="type-filter">Type:</label>
+                    <select id="type-filter">
+                        <option value="all">All Types</option>
+                        <option value="regular-checkup">Regular Checkup</option>
+                        <option value="follow-up">Follow-up</option>
+                        <option value="consultation">Consultation</option>
+                        <option value="urgent-care">Urgent Care</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="search-input">Search:</label>
+                    <input type="text" id="search-input" placeholder="Doctor name...">
+                </div>
+            </div>
+
+            <div id="upcoming-tab" class="tab-content">
+                <div class="appointment-list">
+                    <div class="appointment-item">
+                        <div class="appointment-details">
+                            <div><strong>Dr. John Smith</strong> - Cardiology <span class="badge badge-scheduled">Scheduled</span></div>
+                            <div>Tomorrow at 10:00 AM - Regular Checkup</div>
+                        </div>
+                        <div class="appointment-actions">
+                            <button class="btn btn-secondary view-btn">View Details</button>
+                            <button class="btn btn-danger cancel-btn">Cancel</button>
+                        </div>
+                    </div>
+                    <div class="appointment-item">
+                        <div class="appointment-details">
+                            <div><strong>Dr. Emily Wilson</strong> - Pediatrics <span class="badge badge-scheduled">Scheduled</span></div>
+                            <div>Next Week, April 16, 2025 at 2:30 PM - Follow-up</div>
+                        </div>
+                        <div class="appointment-actions">
+                            <button class="btn btn-secondary view-btn">View Details</button>
+                            <button class="btn btn-danger cancel-btn">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="past-tab" class="tab-content" style="display: none;">
+                <div class="appointment-list">
+                    <div class="appointment-item">
+                        <div class="appointment-details">
+                            <div><strong>Dr. Sarah Johnson</strong> - Dermatology <span class="badge badge-completed">Completed</span></div>
+                            <div>March 25, 2025 at 11:15 AM - Regular Checkup</div>
+                        </div>
+                        <div class="appointment-actions">
+                            <button class="btn btn-secondary view-btn">View Details</button>
+                        </div>
+                    </div>
+                    <div class="appointment-item">
+                        <div class="appointment-details">
+                            <div><strong>Dr. Michael Brown</strong> - Neurology <span class="badge badge-completed">Completed</span></div>
+                            <div>February 10, 2025 at 9:00 AM - Consultation</div>
+                        </div>
+                        <div class="appointment-actions">
+                            <button class="btn btn-secondary view-btn">View Details</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cancelled-tab" class="tab-content" style="display: none;">
+                <div class="appointment-list">
+                    <div class="appointment-item">
+                        <div class="appointment-details">
+                            <div><strong>Dr. David Jones</strong> - Psychiatry <span class="badge badge-cancelled">Cancelled</span></div>
+                            <div>April 5, 2025 at 3:00 PM - Consultation</div>
+                        </div>
+                        <div class="appointment-actions">
+                            <button class="btn btn-secondary view-btn">View Details</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for appointment details -->
+    <div id="appointment-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Appointment Details</h3>
+            <div id="appointment-modal-content">
+                <p><strong>Doctor:</strong> <span id="modal-doctor-name"></span> - <span id="modal-specialization"></span></p>
+                <p><strong>Date & Time:</strong> <span id="modal-date-time"></span></p>
+                <p><strong>Type:</strong> <span id="modal-type"></span></p>
+                <p><strong>Status:</strong> <span id="modal-status"></span></p>
+                <p><strong>Notes:</strong> <span id="modal-notes">No additional notes for this appointment.</span></p>
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; gap:.5rem; justify-content: flex-end;">
+                <button id="modal-close-btn" class="btn btn-secondary">Close</button>
+                <button id="modal-cancel-btn" class="btn btn-danger">Cancel Appointment</button>
+                <button id="modal-reschedule-btn" class="btn">Reschedule</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is authenticated as a patient
+            fetch('/api/user')
+                .then(response => {
+                    if (!response.ok) {
+                        window.location.href = '/auth.html';
+                        throw new Error('Not authenticated');
+                    }
+                    return response.json();
+                })
+                .then(user => {
+                    if (user.role !== 'patient') {
+                        window.location.href = '/doctor-dashboard.html';
+                    }
+                })
+                .catch(error => {
+                    console.error('Authentication error:', error);
+                    window.location.href = '/auth.html';
+                });
+
+            // Logout button handler
+            document.getElementById('logout-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Logout failed');
+                    }
+                    window.location.href = '/auth.html';
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    window.location.href = '/auth.html';
+                });
+            });
+
+            // Tab switching
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class from all tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    // Hide all tab content
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.style.display = 'none';
+                    });
+                    
+                    // Show content for active tab
+                    const activeTab = this.getAttribute('data-tab');
+                    document.getElementById(activeTab + '-tab').style.display = 'block';
+                });
+            });
+
+            // Filter functionality
+            document.getElementById('type-filter').addEventListener('change', filterAppointments);
+            document.getElementById('search-input').addEventListener('input', filterAppointments);
+            
+            function filterAppointments() {
+                const typeFilter = document.getElementById('type-filter').value;
+                const searchFilter = document.getElementById('search-input').value.toLowerCase();
+                
+                const appointments = document.querySelectorAll('.appointment-item');
+                
+                appointments.forEach(appointment => {
+                    const appointmentType = appointment.querySelector('.appointment-details div:nth-child(2)').textContent.toLowerCase();
+                    const doctorName = appointment.querySelector('strong').textContent.toLowerCase();
+                    
+                    let showByType = typeFilter === 'all' || appointmentType.includes(typeFilter.replace('-', ' '));
+                    let showBySearch = doctorName.includes(searchFilter);
+                    
+                    if (showByType && showBySearch) {
+                        appointment.style.display = '';
+                    } else {
+                        appointment.style.display = 'none';
+                    }
+                });
+            }
+
+            // Modal functionality
+            const modal = document.getElementById('appointment-modal');
+            const closeModal = document.querySelector('.close-modal');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const modalCancelBtn = document.getElementById('modal-cancel-btn');
+            const modalRescheduleBtn = document.getElementById('modal-reschedule-btn');
+            
+            // View details buttons
+            const viewBtns = document.querySelectorAll('.view-btn');
+            viewBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const appointmentItem = this.closest('.appointment-item');
+                    const doctorInfoText = appointmentItem.querySelector('.appointment-details div:nth-child(1)').textContent;
+                    const doctorName = appointmentItem.querySelector('strong').textContent;
+                    const specialization = doctorInfoText.split(' - ')[1].split(' ')[0];
+                    const status = appointmentItem.querySelector('.badge').textContent.toLowerCase();
+                    const dateTimeAndType = appointmentItem.querySelector('.appointment-details div:nth-child(2)').textContent;
+                    
+                    document.getElementById('modal-doctor-name').textContent = doctorName;
+                    document.getElementById('modal-specialization').textContent = specialization;
+                    document.getElementById('modal-date-time').textContent = dateTimeAndType.split(' - ')[0];
+                    document.getElementById('modal-type').textContent = dateTimeAndType.split(' - ')[1];
+                    document.getElementById('modal-status').textContent = status;
+                    
+                    // Show/hide action buttons based on status
+                    if (status === 'completed' || status === 'cancelled') {
+                        modalCancelBtn.style.display = 'none';
+                        modalRescheduleBtn.style.display = 'none';
+                    } else {
+                        modalCancelBtn.style.display = 'block';
+                        modalRescheduleBtn.style.display = 'block';
+                    }
+                    
+                    modal.style.display = 'block';
+                });
+            });
+            
+            // Cancel buttons
+            const cancelBtns = document.querySelectorAll('.cancel-btn');
+            cancelBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const appointmentItem = this.closest('.appointment-item');
+                    const doctorName = appointmentItem.querySelector('strong').textContent;
+                    const dateTime = appointmentItem.querySelector('.appointment-details div:nth-child(2)').textContent.split(' - ')[0];
+                    
+                    if (confirm(`Are you sure you want to cancel your appointment with ${doctorName} on ${dateTime}?`)) {
+                        // In a real app, you would send a request to cancel the appointment
+                        alert('Appointment cancelled successfully');
+                        
+                        // Move the appointment to the cancelled tab
+                        const cancelledTab = document.getElementById('cancelled-tab');
+                        const appointmentList = cancelledTab.querySelector('.appointment-list');
+                        
+                        // Update the badge
+                        const badge = appointmentItem.querySelector('.badge');
+                        badge.textContent = 'Cancelled';
+                        badge.className = 'badge badge-cancelled';
+                        
+                        // Remove cancel button
+                        appointmentItem.querySelector('.cancel-btn').remove();
+                        
+                        // Move the appointment
+                        appointmentList.appendChild(appointmentItem);
+                    }
+                });
+            });
+            
+            // Close modal
+            closeModal.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+            
+            modalCloseBtn.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // Cancel appointment from modal
+            modalCancelBtn.addEventListener('click', function() {
+                const doctorName = document.getElementById('modal-doctor-name').textContent;
+                const dateTime = document.getElementById('modal-date-time').textContent;
+                
+                if (confirm(`Are you sure you want to cancel your appointment with ${doctorName} on ${dateTime}?`)) {
+                    // In a real app, you would send a request to cancel the appointment
+                    alert('Appointment cancelled successfully');
+                    modal.style.display = 'none';
+                    
+                    // Refresh the page to see the updated appointment list
+                    // window.location.reload();
+                }
+            });
+            
+            // Reschedule appointment
+            modalRescheduleBtn.addEventListener('click', function() {
+                const doctorName = document.getElementById('modal-doctor-name').textContent;
+                alert(`Redirecting to reschedule appointment with ${doctorName}. This would take you to a booking page.`);
+                modal.style.display = 'none';
+                
+                // In a real app, you would redirect to a booking page
+                // window.location.href = `/patient-find-doctors.html?reschedule=true&doctor=${doctorName}`;
+            });
+        });
+    </script>
+</body>
+</html>

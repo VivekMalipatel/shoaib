@@ -68,8 +68,11 @@
 <body>
     <header>
         <h1>MediConnect</h1>
-        <nav>
-            <a href="#" id="logout-btn" style="color: white; margin-left: 1rem;">Logout</a>
+        <nav class="navbar" style="display: flex; gap: 1rem;">
+            <a href="/doctor-dashboard.html" style="color: white;">Dashboard</a>
+            <a href="/doctor-appointments.html" style="color: white;">Appointments</a>
+            <a href="/doctor-availability.html" style="color: white;">Availability</a>
+            <a href="#" id="logout-btn" style="color: white;">Logout</a>
         </nav>
     </header>
 
@@ -93,13 +96,13 @@
                         <strong>2:00 PM</strong> - Sarah Johnson (Consultation)
                     </div>
                 </div>
-                <button class="btn" style="margin-top: 1rem;">View All</button>
+                <a href="/doctor-appointments.html"><button class="btn" style="margin-top: 1rem;">View All</button></a>
             </div>
 
             <div class="card">
                 <h3>Your Availability</h3>
                 <p>Manage your available time slots for appointments</p>
-                <button class="btn">Update Availability</button>
+                <a href="/doctor-availability.html"><button class="btn">Update Availability</button></a>
             </div>
 
             <div class="card">

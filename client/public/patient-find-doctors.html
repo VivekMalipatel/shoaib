@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Doctors - MediConnect</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafb;
+        }
+        header {
+            background-color: #1a365d;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .welcome-panel {
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #9ca3af;
+        }
+        .btn-secondary:hover {
+            background-color: #6b7280;
+        }
+        .navbar {
+            display: flex;
+            gap: 1rem;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+        }
+        .doctor-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .doctor-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .doctor-info {
+            padding: 1.5rem;
+        }
+        .doctor-avatar {
+            width: 100%;
+            height: 150px;
+            background-color: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #9ca3af;
+        }
+        .filter-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        select, input {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 500px;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .time-slot-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .time-slot {
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .time-slot.selected {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+        }
+        h1, h2, h3, h4 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>MediConnect</h1>
+        <nav class="navbar">
+            <a href="/patient-dashboard.html">Dashboard</a>
+            <a href="/patient-appointments.html">My Appointments</a>
+            <a href="/patient-find-doctors.html">Find Doctors</a>
+            <a href="#" id="logout-btn">Logout</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="welcome-panel">
+            <h2>Find a Doctor</h2>
+            <p>Browse through our network of qualified doctors and book an appointment.</p>
+        </div>
+
+        <div class="card">
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="specialization-filter">Specialization:</label>
+                    <select id="specialization-filter">
+                        <option value="all">All Specializations</option>
+                        <option value="cardiology">Cardiology</option>
+                        <option value="dermatology">Dermatology</option>
+                        <option value="neurology">Neurology</option>
+                        <option value="pediatrics">Pediatrics</option>
+                        <option value="psychiatry">Psychiatry</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="availability-filter">Availability:</label>
+                    <select id="availability-filter">
+                        <option value="all">Any Time</option>
+                        <option value="today">Today</option>
+                        <option value="tomorrow">Tomorrow</option>
+                        <option value="this-week">This Week</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="search-input">Search:</label>
+                    <input type="text" id="search-input" placeholder="Doctor name...">
+                </div>
+            </div>
+
+            <div class="doctor-list" id="doctor-list">
+                <!-- Doctor cards will be inserted here by JavaScript -->
+                <div class="doctor-card">
+                    <div class="doctor-avatar">👨‍⚕️</div>
+                    <div class="doctor-info">
+                        <h3>Dr. John Smith</h3>
+                        <p>Cardiology</p>
+                        <p>Available today, 3 slots</p>
+                        <button class="btn book-btn" data-doctor-id="1" data-doctor-name="Dr. John Smith" data-specialization="Cardiology">Book Appointment</button>
+                    </div>
+                </div>
+                <div class="doctor-card">
+                    <div class="doctor-avatar">👩‍⚕️</div>
+                    <div class="doctor-info">
+                        <h3>Dr. Sarah Johnson</h3>
+                        <p>Dermatology</p>
+                        <p>Available tomorrow, 5 slots</p>
+                        <button class="btn book-btn" data-doctor-id="2" data-doctor-name="Dr. Sarah Johnson" data-specialization="Dermatology">Book Appointment</button>
+                    </div>
+                </div>
+                <div class="doctor-card">
+                    <div class="doctor-avatar">👨‍⚕️</div>
+                    <div class="doctor-info">
+                        <h3>Dr. Michael Brown</h3>
+                        <p>Neurology</p>
+                        <p>Available this week, 8 slots</p>
+                        <button class="btn book-btn" data-doctor-id="3" data-doctor-name="Dr. Michael Brown" data-specialization="Neurology">Book Appointment</button>
+                    </div>
+                </div>
+                <div class="doctor-card">
+                    <div class="doctor-avatar">👩‍⚕️</div>
+                    <div class="doctor-info">
+                        <h3>Dr. Emily Wilson</h3>
+                        <p>Pediatrics</p>
+                        <p>Available today, 2 slots</p>
+                        <button class="btn book-btn" data-doctor-id="4" data-doctor-name="Dr. Emily Wilson" data-specialization="Pediatrics">Book Appointment</button>
+                    </div>
+                </div>
+                <div class="doctor-card">
+                    <div class="doctor-avatar">👨‍⚕️</div>
+                    <div class="doctor-info">
+                        <h3>Dr. David Jones</h3>
+                        <p>Psychiatry</p>
+                        <p>Available tomorrow, 4 slots</p>
+                        <button class="btn book-btn" data-doctor-id="5" data-doctor-name="Dr. David Jones" data-specialization="Psychiatry">Book Appointment</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for booking appointment -->
+    <div id="booking-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Book an Appointment</h3>
+            <div id="booking-form">
+                <p><strong>Doctor:</strong> <span id="modal-doctor-name"></span></p>
+                <p><strong>Specialization:</strong> <span id="modal-specialization"></span></p>
+                
+                <div style="margin-top: 1.5rem;">
+                    <h4>Select Date:</h4>
+                    <select id="appointment-date">
+                        <option value="today">Today (April 9, 2025)</option>
+                        <option value="tomorrow">Tomorrow (April 10, 2025)</option>
+                        <option value="next-day">April 11, 2025</option>
+                        <option value="next-week">April 16, 2025</option>
+                    </select>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h4>Select Time:</h4>
+                    <div id="time-slot-list" class="time-slot-list">
+                        <div class="time-slot" data-time="9:00">9:00 AM</div>
+                        <div class="time-slot" data-time="9:30">9:30 AM</div>
+                        <div class="time-slot" data-time="10:00">10:00 AM</div>
+                        <div class="time-slot" data-time="10:30">10:30 AM</div>
+                        <div class="time-slot" data-time="11:00">11:00 AM</div>
+                        <div class="time-slot" data-time="11:30">11:30 AM</div>
+                        <div class="time-slot" data-time="13:00">1:00 PM</div>
+                        <div class="time-slot" data-time="13:30">1:30 PM</div>
+                        <div class="time-slot" data-time="14:00">2:00 PM</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h4>Appointment Type:</h4>
+                    <select id="appointment-type">
+                        <option value="regular-checkup">Regular Checkup</option>
+                        <option value="follow-up">Follow-up</option>
+                        <option value="consultation">Consultation</option>
+                        <option value="urgent-care">Urgent Care</option>
+                    </select>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h4>Notes (optional):</h4>
+                    <textarea id="appointment-notes" style="width: 100%; height: 100px; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;"></textarea>
+                </div>
+                
+                <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+                    <button id="modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+                    <button id="modal-book-btn" class="btn">Book Appointment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is authenticated as a patient
+            fetch('/api/user')
+                .then(response => {
+                    if (!response.ok) {
+                        window.location.href = '/auth.html';
+                        throw new Error('Not authenticated');
+                    }
+                    return response.json();
+                })
+                .then(user => {
+                    if (user.role !== 'patient') {
+                        window.location.href = '/doctor-dashboard.html';
+                    }
+                })
+                .catch(error => {
+                    console.error('Authentication error:', error);
+                    window.location.href = '/auth.html';
+                });
+
+            // Logout button handler
+            document.getElementById('logout-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Logout failed');
+                    }
+                    window.location.href = '/auth.html';
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    window.location.href = '/auth.html';
+                });
+            });
+
+            // Filter controls
+            document.getElementById('specialization-filter').addEventListener('change', filterDoctors);
+            document.getElementById('availability-filter').addEventListener('change', filterDoctors);
+            document.getElementById('search-input').addEventListener('input', filterDoctors);
+            
+            function filterDoctors() {
+                const specializationFilter = document.getElementById('specialization-filter').value;
+                const availabilityFilter = document.getElementById('availability-filter').value;
+                const searchFilter = document.getElementById('search-input').value.toLowerCase();
+                
+                const doctorCards = document.querySelectorAll('.doctor-card');
+                
+                doctorCards.forEach(card => {
+                    const specialization = card.querySelector('.doctor-info p:nth-child(2)').textContent.toLowerCase();
+                    const availability = card.querySelector('.doctor-info p:nth-child(3)').textContent.toLowerCase();
+                    const doctorName = card.querySelector('.doctor-info h3').textContent.toLowerCase();
+                    
+                    let showBySpecialization = specializationFilter === 'all' || specialization.includes(specializationFilter);
+                    let showByAvailability = availabilityFilter === 'all' || availability.includes(availabilityFilter.replace('-', ' '));
+                    let showBySearch = doctorName.includes(searchFilter);
+                    
+                    if (showBySpecialization && showByAvailability && showBySearch) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+
+            // Booking modal
+            const modal = document.getElementById('booking-modal');
+            const closeModal = document.querySelector('.close-modal');
+            const modalCancelBtn = document.getElementById('modal-cancel-btn');
+            const modalBookBtn = document.getElementById('modal-book-btn');
+            let selectedTimeSlot = null;
+            let currentDoctorId = null;
+            
+            // Set up book appointment buttons
+            const bookBtns = document.querySelectorAll('.book-btn');
+            bookBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const doctorId = this.getAttribute('data-doctor-id');
+                    const doctorName = this.getAttribute('data-doctor-name');
+                    const specialization = this.getAttribute('data-specialization');
+                    
+                    document.getElementById('modal-doctor-name').textContent = doctorName;
+                    document.getElementById('modal-specialization').textContent = specialization;
+                    currentDoctorId = doctorId;
+                    
+                    // Reset selection
+                    if (selectedTimeSlot) {
+                        selectedTimeSlot.classList.remove('selected');
+                    }
+                    selectedTimeSlot = null;
+                    
+                    modal.style.display = 'block';
+                });
+            });
+            
+            // Set up time slot selection
+            const timeSlots = document.querySelectorAll('.time-slot');
+            timeSlots.forEach(slot => {
+                slot.addEventListener('click', function() {
+                    if (selectedTimeSlot) {
+                        selectedTimeSlot.classList.remove('selected');
+                    }
+                    
+                    this.classList.add('selected');
+                    selectedTimeSlot = this;
+                });
+            });
+            
+            // Close modal
+            closeModal.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+            
+            modalCancelBtn.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // Book appointment
+            modalBookBtn.addEventListener('click', function() {
+                if (!selectedTimeSlot) {
+                    alert('Please select a time slot');
+                    return;
+                }
+                
+                const appointmentDate = document.getElementById('appointment-date').value;
+                const appointmentTime = selectedTimeSlot.getAttribute('data-time');
+                const appointmentType = document.getElementById('appointment-type').value;
+                const notes = document.getElementById('appointment-notes').value;
+                
+                // In a real app, you would send a request to book the appointment
+                console.log('Booking appointment:', {
+                    doctorId: currentDoctorId,
+                    date: appointmentDate,
+                    time: appointmentTime,
+                    type: appointmentType,
+                    notes: notes
+                });
+                
+                alert('Appointment booked successfully!');
+                modal.style.display = 'none';
+                
+                // Here you would send a request to your API to book the appointment
+                // For example:
+                // fetch('/api/appointments', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({
+                //         doctorId: currentDoctorId,
+                //         date: appointmentDate,
+                //         time: appointmentTime,
+                //         type: appointmentType,
+                //         notes: notes
+                //     })
+                // })
+                // .then(response => response.json())
+                // .then(data => {
+                //     alert('Appointment booked successfully!');
+                //     modal.style.display = 'none';
+                //     window.location.href = '/patient-appointments.html';
+                // })
+                // .catch(error => {
+                //     console.error('Error:', error);
+                //     alert('Failed to book appointment. Please try again.');
+                // });
+            });
+        });
+    </script>
+</body>
+</html>
