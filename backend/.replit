@@ -1,0 +1,22 @@
+run = ["bash", "start.sh"]
+
+[nix]
+channel = "stable-23_11"
+
+[env]
+PYTHON_KEYRING_BACKEND = "keyring.backends.null.Keyring"
+
+[packager]
+language = "python3"
+ignoredPackages = ["unit_tests"]
+
+[packager.features]
+packageSearch = true
+guessImports = true
+
+[languages.python3]
+pattern = "**/*.py"
+syntax = "python"
+
+[languages.python3.languageServer]
+start = ["pylsp"]
