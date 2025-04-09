@@ -82,10 +82,15 @@ export default function AuthPage() {
   }, [userType, registerForm]);
 
   const onLoginSubmit = (data: LoginFormValues) => {
-    loginMutation.mutate({
-      username: data.username,
-      password: data.password,
-    });
+    console.log('Login form submitted:', data.username);
+    try {
+      loginMutation.mutate({
+        username: data.username,
+        password: data.password,
+      });
+    } catch (error) {
+      console.error('Error during login mutation:', error);
+    }
   };
 
   const onRegisterSubmit = (data: z.infer<typeof insertUserSchema>) => {
