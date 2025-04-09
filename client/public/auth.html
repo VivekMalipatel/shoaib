@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - MediConnect</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9fafb;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 400px;
+            width: 100%;
+            padding: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .form-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+        .checkbox-group input {
+            width: auto;
+            margin-right: 0.5rem;
+        }
+        .btn {
+            width: 100%;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #2563eb;
+        }
+        .error-message {
+            color: #ef4444;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+        }
+        .form-link {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .form-link a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        .form-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MediConnect</h1>
+            <p>Streamlining doctor-patient appointments</p>
+        </div>
+        
+        <div class="form-card">
+            <h2>Sign in to your account</h2>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">Login as</label>
+                    <select id="role" name="role" required>
+                        <option value="patient">Patient</option>
+                        <option value="doctor">Doctor</option>
+                    </select>
+                </div>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="remember" name="remember">
+                    <label for="remember">Remember me</label>
+                </div>
+                
+                <button type="submit" class="btn">Sign in</button>
+                
+                <div id="error-message" class="error-message">
+                    Invalid username or password
+                </div>
+            </form>
+            
+            <div class="form-link">
+                <a href="#">Don't have an account? Register</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // First, check if user is already logged in
+            fetch('/api/user')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Not authenticated');
+                })
+                .then(user => {
+                    // User is logged in, redirect to appropriate dashboard
+                    if (user.role === 'doctor') {
+                        window.location.href = '/doctor-dashboard.html';
+                    } else {
+                        window.location.href = '/patient-dashboard.html';
+                    }
+                })
+                .catch(error => {
+                    console.log('User not authenticated, showing login form');
+                });
+            
+            // Handle form submission
+            document.getElementById('login-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const role = document.getElementById('role').value;
+                
+                // Send login request
+                fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Login failed');
+                    }
+                    return response.json();
+                })
+                .then(userData => {
+                    console.log('Login successful:', userData);
+                    
+                    // Redirect based on user role
+                    if (userData.role === 'doctor') {
+                        window.location.href = '/doctor-dashboard.html';
+                    } else {
+                        window.location.href = '/patient-dashboard.html';
+                    }
+                })
+                .catch(error => {
+                    console.error('Login error:', error);
+                    document.getElementById('error-message').style.display = 'block';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

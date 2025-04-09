@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Dashboard - MediConnect</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafb;
+        }
+        header {
+            background-color: #1a365d;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .welcome-panel {
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #2563eb;
+        }
+        .doctor-list {
+            margin-top: 1rem;
+        }
+        .doctor-item {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .appointment-list {
+            margin-top: 1rem;
+        }
+        .appointment-item {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        h1, h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>MediConnect</h1>
+        <nav>
+            <a href="/auth.html" style="color: white; margin-left: 1rem;">Logout</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="welcome-panel">
+            <h2>Welcome, Patient</h2>
+            <p>View your appointments and book new ones with our doctors.</p>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3>Your Appointments</h3>
+                <div class="appointment-list">
+                    <div class="appointment-item">
+                        <strong>Tomorrow, 10:00 AM</strong> - Dr. Smith (Cardiology)
+                    </div>
+                    <div class="appointment-item">
+                        <strong>Next Week, 2:30 PM</strong> - Dr. Johnson (Follow-up)
+                    </div>
+                </div>
+                <button class="btn" style="margin-top: 1rem;">View All</button>
+            </div>
+
+            <div class="card">
+                <h3>Find a Doctor</h3>
+                <div class="doctor-list">
+                    <div class="doctor-item">
+                        <div>
+                            <strong>Dr. Smith</strong> - Cardiology
+                        </div>
+                        <button class="btn btn-sm">Book</button>
+                    </div>
+                    <div class="doctor-item">
+                        <div>
+                            <strong>Dr. Johnson</strong> - Pediatrics
+                        </div>
+                        <button class="btn btn-sm">Book</button>
+                    </div>
+                    <div class="doctor-item">
+                        <div>
+                            <strong>Dr. Williams</strong> - Neurology
+                        </div>
+                        <button class="btn btn-sm">Book</button>
+                    </div>
+                </div>
+                <button class="btn" style="margin-top: 1rem;">View All Doctors</button>
+            </div>
+
+            <div class="card">
+                <h3>Your Medical Records</h3>
+                <p>View your medical history and test results</p>
+                <button class="btn">Access Records</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is authenticated as a patient
+        fetch('/api/user')
+            .then(response => {
+                if (!response.ok) {
+                    window.location.href = '/auth';
+                    throw new Error('Not authenticated');
+                }
+                return response.json();
+            })
+            .then(user => {
+                if (user.role !== 'patient') {
+                    window.location.href = '/doctor-dashboard.html';
+                }
+                // Update welcome message with patient's name
+                document.querySelector('.welcome-panel h2').textContent = `Welcome, ${user.fullName}`;
+            })
+            .catch(error => {
+                console.error('Authentication error:', error);
+            });
+    </script>
+</body>
+</html>

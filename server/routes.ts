@@ -178,19 +178,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Special route for handling login redirect
-  app.get('/auth-redirect', (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.redirect('/auth');
-    }
-    
-    // Read the redirect.html file and serve it
-    res.redirect(`/redirect.html?role=${req.user.role}`);
+  // Special route for handling root requests
+  app.get('/', (req, res, next) => {
+    // Let the static file middleware handle it
+    next();
   });
   
-  // Serve the static redirect.html file
-  app.get('/redirect.html', (req, res, next) => {
-    next();
+  // Direct routes to appropriate dashboards
+  app.get('/doctor-dashboard', (req, res) => {
+    res.redirect('/doctor-dashboard.html');
+  });
+  
+  app.get('/patient-dashboard', (req, res) => {
+    res.redirect('/patient-dashboard.html');
+  });
+  
+  // Redirect auth route to HTML version
+  app.get('/auth', (req, res) => {
+    res.redirect('/auth.html');
   });
 
   const httpServer = createServer(app);
