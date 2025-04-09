@@ -120,13 +120,30 @@ export default function AuthPage() {
         description: `Welcome back, ${userData.fullName}`
       });
       
-      // Navigate based on role using direct window location
-      if (userData.role === 'doctor') {
-        console.log('Navigating to doctor dashboard');
-        window.location.href = '/';
+      // Navigate based on role using our global helper
+      console.log('Attempting to navigate to dashboard for role:', userData.role);
+      
+      // Use the global helper in index.html
+      if (typeof window.handleRoleRouting === 'function') {
+        window.handleRoleRouting(userData.role);
       } else {
-        console.log('Navigating to patient dashboard');
-        window.location.href = '/patient';
+        // Fallback direct navigation if helper isn't available
+        if (userData.role === 'doctor') {
+          console.log('Fallback: Navigating to doctor dashboard');
+          
+          // Try different navigation approaches to ensure it works
+          window.location.pathname = '/';
+          setTimeout(() => {
+            window.location.href = window.location.origin + '/';
+          }, 100);
+        } else {
+          console.log('Fallback: Navigating to patient dashboard');
+          
+          window.location.pathname = '/patient';
+          setTimeout(() => {
+            window.location.href = window.location.origin + '/patient';
+          }, 100);
+        }
       }
     })
     .catch(error => {

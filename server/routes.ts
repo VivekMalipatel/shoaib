@@ -178,6 +178,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Special routes to handle SPA navigation
+  app.get('/patient', (req, res) => {
+    res.redirect('/');
+  });
+
+  // Always return index.html for any non-API routes to support SPA routing
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      next();
+    } else {
+      // Will be handled by Vite's SPA serving middleware
+      next();
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

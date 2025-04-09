@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>MediConnect - Medical Appointment System</title>
+    <script>
+      // Simple route helper for handling role-based routing
+      window.handleRoleRouting = function(role) {
+        if (role === 'doctor') {
+          window.location.pathname = '/';
+        } else if (role === 'patient') {
+          window.location.pathname = '/patient';
+        }
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>
