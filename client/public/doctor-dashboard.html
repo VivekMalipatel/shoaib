@@ -69,7 +69,7 @@
     <header>
         <h1>MediConnect</h1>
         <nav>
-            <a href="/auth.html" style="color: white; margin-left: 1rem;">Logout</a>
+            <a href="#" id="logout-btn" style="color: white; margin-left: 1rem;">Logout</a>
         </nav>
     </header>
 
@@ -115,7 +115,7 @@
         fetch('/api/user')
             .then(response => {
                 if (!response.ok) {
-                    window.location.href = '/auth';
+                    window.location.href = '/auth.html';
                     throw new Error('Not authenticated');
                 }
                 return response.json();
@@ -129,7 +129,31 @@
             })
             .catch(error => {
                 console.error('Authentication error:', error);
+                window.location.href = '/auth.html';
             });
+            
+        // Handle logout button click
+        document.getElementById('logout-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Call logout API
+            fetch('/api/logout', {
+                method: 'POST',
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Logout failed');
+                }
+                // Redirect to login page after successful logout
+                window.location.href = '/auth.html';
+            })
+            .catch(error => {
+                console.error('Logout error:', error);
+                // Try to redirect anyway
+                window.location.href = '/auth.html';
+            });
+        });
     </script>
 </body>
 </html>
