@@ -35,9 +35,9 @@ def register():
     db.session.add(user)
     db.session.commit()
     
-    # Create access and refresh tokens
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_refresh_token(identity=user.id)
+    # Create access and refresh tokens with string ID
+    access_token = create_access_token(identity=str(user.id))
+    refresh_token = create_refresh_token(identity=str(user.id))
     
     return jsonify({
         'user': user.to_dict(),
@@ -54,8 +54,9 @@ def login():
     user = User.query.filter_by(username=username).first()
     
     if user and user.check_password(password):
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # Convert user.id to string to ensure compatibility with JWT
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
         
         return jsonify({
             'user': user.to_dict(),
@@ -77,7 +78,9 @@ def refresh_token():
 @jwt_required()
 def get_user():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    # Convert string ID back to integer for database query
+    user_id = int(current_user_id)
+    user = User.query.get(user_id)
     
     if not user:
         return jsonify({'message': 'User not found'}), 404
@@ -106,9 +109,10 @@ def get_doctor_availability(doctor_id):
 @jwt_required()
 def add_doctor_availability(doctor_id):
     current_user_id = get_jwt_identity()
+    user_id = int(current_user_id)
     
     # Ensure the user is the doctor or an admin
-    if current_user_id != doctor_id:
+    if user_id != doctor_id:
         return jsonify({'message': 'Unauthorized'}), 403
     
     data = request.get_json()
@@ -142,12 +146,13 @@ def add_doctor_availability(doctor_id):
 @jwt_required()
 def create_appointment():
     current_user_id = get_jwt_identity()
+    user_id = int(current_user_id)
     data = request.get_json()
     
     # Create new appointment
     appointment = Appointment(
         doctor_id=data['doctor_id'],
-        patient_id=current_user_id,  # Patient creates the appointment
+        patient_id=user_id,  # Patient creates the appointment
         date=datetime.strptime(data['date'], '%Y-%m-%d').date(),
         time=data['time'],
         status='scheduled',
@@ -164,13 +169,14 @@ def create_appointment():
 @jwt_required()
 def get_doctor_appointments():
     current_user_id = get_jwt_identity()
+    user_id = int(current_user_id)
     
     # Ensure the user is a doctor
-    user = User.query.get(current_user_id)
+    user = User.query.get(user_id)
     if user.role != 'doctor':
         return jsonify({'message': 'Unauthorized'}), 403
     
-    appointments = Appointment.query.filter_by(doctor_id=current_user_id).all()
+    appointments = Appointment.query.filter_by(doctor_id=user_id).all()
     
     # Include patient details in the response
     result = []
@@ -186,8 +192,9 @@ def get_doctor_appointments():
 @jwt_required()
 def get_patient_appointments():
     current_user_id = get_jwt_identity()
+    user_id = int(current_user_id)
     
-    appointments = Appointment.query.filter_by(patient_id=current_user_id).all()
+    appointments = Appointment.query.filter_by(patient_id=user_id).all()
     
     # Include doctor details in the response
     result = []
@@ -203,6 +210,7 @@ def get_patient_appointments():
 @jwt_required()
 def update_appointment(appointment_id):
     current_user_id = get_jwt_identity()
+    user_id = int(current_user_id)
     data = request.get_json()
     
     appointment = Appointment.query.get(appointment_id)
@@ -211,7 +219,7 @@ def update_appointment(appointment_id):
         return jsonify({'message': 'Appointment not found'}), 404
     
     # Check if the user is authorized to update this appointment
-    if appointment.doctor_id != current_user_id and appointment.patient_id != current_user_id:
+    if appointment.doctor_id != user_id and appointment.patient_id != user_id:
         return jsonify({'message': 'Unauthorized'}), 403
     
     # Update fields that were provided
