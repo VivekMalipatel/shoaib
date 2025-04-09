@@ -50,7 +50,7 @@ export class MemStorage implements IStorage {
     const doctor: User = {
       id: 1,
       username: "doctor",
-      password: "5dca0c112db692fbe981d74d8077cf0c51d0524a7cb347ed1e3b0ee68c8bf020.c6c70d41167847d3da30ff980e1b9057", // password: "doctor123"
+      password: "b935722eeed9c41912e7cf0f4e5f38d9f52eafc6232103ede14122272a0559c1516c2635cf9f297945a9f2a25ff75a00cbe6dd53278129ebc2d495a97a365023.1c93c6a298f835266ddf2cde9c074d24", // password: "doctor123"
       email: "doctor@example.com",
       fullName: "Dr. John Smith",
       role: "doctor",
@@ -64,7 +64,7 @@ export class MemStorage implements IStorage {
     const patient: User = {
       id: 2,
       username: "patient",
-      password: "1a191a3dc417bcae58f1eb8bad9ec5ed4886aae92b344c00dcf27ad09f6a5a84.96f1cd880a8451771acb01a9bd001f6b", // password: "patient123" 
+      password: "0682854de5e37620214bcfa975cd074c4a4e46c50b51ff45ff38fba83477dd6840b9eb431fafb857068f5cb27316873b68949e74eb1ebe435280334270398aed.47f762ec9ab3154816ae578f30407cc6", // password: "patient123" 
       email: "patient@example.com",
       fullName: "Jane Doe",
       role: "patient",
