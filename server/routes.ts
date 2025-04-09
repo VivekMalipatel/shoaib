@@ -178,19 +178,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Special routes to handle SPA navigation
-  app.get('/patient', (req, res) => {
-    res.redirect('/');
-  });
-
-  // Always return index.html for any non-API routes to support SPA routing
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) {
-      next();
-    } else {
-      // Will be handled by Vite's SPA serving middleware
-      next();
+  // Special route for handling login redirect
+  app.get('/auth-redirect', (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.redirect('/auth');
     }
+    
+    // Read the redirect.html file and serve it
+    res.redirect(`/redirect.html?role=${req.user.role}`);
+  });
+  
+  // Serve the static redirect.html file
+  app.get('/redirect.html', (req, res, next) => {
+    next();
   });
 
   const httpServer = createServer(app);

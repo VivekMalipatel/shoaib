@@ -120,31 +120,11 @@ export default function AuthPage() {
         description: `Welcome back, ${userData.fullName}`
       });
       
-      // Navigate based on role using our global helper
-      console.log('Attempting to navigate to dashboard for role:', userData.role);
+      // Navigate via the server-side redirect for proper routing
+      console.log('Navigating to dashboard via redirect for role:', userData.role);
       
-      // Use the global helper in index.html
-      if (typeof window.handleRoleRouting === 'function') {
-        window.handleRoleRouting(userData.role);
-      } else {
-        // Fallback direct navigation if helper isn't available
-        if (userData.role === 'doctor') {
-          console.log('Fallback: Navigating to doctor dashboard');
-          
-          // Try different navigation approaches to ensure it works
-          window.location.pathname = '/';
-          setTimeout(() => {
-            window.location.href = window.location.origin + '/';
-          }, 100);
-        } else {
-          console.log('Fallback: Navigating to patient dashboard');
-          
-          window.location.pathname = '/patient';
-          setTimeout(() => {
-            window.location.href = window.location.origin + '/patient';
-          }, 100);
-        }
-      }
+      // Use the special auth-redirect endpoint we created
+      window.location.href = '/auth-redirect';
     })
     .catch(error => {
       console.error('Login error:', error);

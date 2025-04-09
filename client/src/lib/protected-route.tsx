@@ -25,15 +25,22 @@ export function ProtectedRoute({
         }
 
         if (!user) {
-          return <Redirect to="/auth" />;
+          console.log('No user found, redirecting to /auth');
+          // Force a hard redirect for consistent browser behavior
+          window.location.href = '/auth';
+          return null;
         }
 
         if (role && user.role !== role) {
-          return user.role === "doctor" ? (
-            <Redirect to="/" />
-          ) : (
-            <Redirect to="/patient" />
-          );
+          console.log(`User role ${user.role} doesn't match protected route role ${role}`);
+          if (user.role === "doctor") {
+            console.log('Redirecting doctor to /', user);
+            window.location.href = '/';
+          } else {
+            console.log('Redirecting patient to /patient', user);
+            window.location.href = '/patient';
+          }
+          return null;
         }
 
         return <Component />;
