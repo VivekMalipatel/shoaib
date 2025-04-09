@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
   username: z.string().min(1, { message: "Username is required" }),
@@ -39,6 +41,7 @@ export default function AuthPage() {
   const [location, navigate] = useLocation();
   const { user, loginMutation, registerMutation, isLoading } = useAuth();
   const [userType, setUserType] = useState<"patient" | "doctor">("patient");
+  const { toast } = useToast();
 
   // Redirect if user is already logged in
   useEffect(() => {
@@ -85,31 +88,57 @@ export default function AuthPage() {
 
   const onLoginSubmit = (data: LoginFormValues) => {
     console.log('Login form submitted:', data.username, 'as', data.role);
-    try {
-      // Store the selected role for post-login redirection
-      localStorage.setItem('selectedRole', data.role);
-      
-      loginMutation.mutate({
+    
+    // Store the selected role for post-login redirection
+    localStorage.setItem('selectedRole', data.role);
+    
+    // Direct fetch approach to debug any issues
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         username: data.username,
-        password: data.password,
-      }, {
-        onSuccess: (userData) => {
-          // Check if the logged-in user's role matches the selected role
-          if (userData.role !== data.role) {
-            console.warn('User logged in with a different role than their account type');
-          }
-          
-          // Navigate to the appropriate dashboard based on the user's actual role
-          if (userData.role === 'doctor') {
-            navigate('/');
-          } else {
-            navigate('/patient');
-          }
-        }
+        password: data.password
+      }),
+      credentials: 'include'
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Login failed: ' + response.status);
+      }
+      return response.json();
+    })
+    .then(userData => {
+      console.log('Login successful, user data:', userData);
+      
+      // Update the query cache with user data
+      queryClient.setQueryData(["/api/user"], userData);
+      
+      // Show success toast
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${userData.fullName}`
       });
-    } catch (error) {
-      console.error('Error during login mutation:', error);
-    }
+      
+      // Navigate based on role
+      if (userData.role === 'doctor') {
+        console.log('Navigating to doctor dashboard');
+        navigate('/');
+      } else {
+        console.log('Navigating to patient dashboard');
+        navigate('/patient');
+      }
+    })
+    .catch(error => {
+      console.error('Login error:', error);
+      
+      // Show error toast
+      toast({
+        title: "Login failed",
+        description: "Invalid username or password",
+        variant: "destructive"
+      });
+    });
   };
 
   const onRegisterSubmit = (data: z.infer<typeof insertUserSchema>) => {
