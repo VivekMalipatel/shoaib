@@ -1,50 +1,50 @@
-import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
-import { Redirect, Route } from "wouter";
+import { useAuth } from '@/hooks/use-auth';
+import { Loader2 } from 'lucide-react';
+import { Redirect, Route } from 'wouter';
+
+interface ProtectedRouteProps {
+  path: string;
+  component: () => React.JSX.Element;
+  role?: 'doctor' | 'patient';
+}
 
 export function ProtectedRoute({
   path,
   component: Component,
   role,
-}: {
-  path: string;
-  component: () => React.JSX.Element;
-  role?: "patient" | "doctor";
-}) {
+}: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <Route path={path}>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-border" />
+        </div>
+      </Route>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Route path={path}>
+        <Redirect to="/auth" />
+      </Route>
+    );
+  }
+
+  // If a specific role is required, check if the user has that role
+  if (role && user.role !== role) {
+    return (
+      <Route path={path}>
+        <Redirect to={user.role === 'doctor' ? '/' : '/patient'} />
+      </Route>
+    );
+  }
 
   return (
     <Route path={path}>
-      {() => {
-        if (isLoading) {
-          return (
-            <div className="flex items-center justify-center min-h-screen">
-              <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
-            </div>
-          );
-        }
-
-        if (!user) {
-          console.log('No user found, redirecting to /auth');
-          // Force a hard redirect for consistent browser behavior
-          window.location.href = '/auth';
-          return null;
-        }
-
-        if (role && user.role !== role) {
-          console.log(`User role ${user.role} doesn't match protected route role ${role}`);
-          if (user.role === "doctor") {
-            console.log('Redirecting doctor to /', user);
-            window.location.href = '/';
-          } else {
-            console.log('Redirecting patient to /patient', user);
-            window.location.href = '/patient';
-          }
-          return null;
-        }
-
-        return <Component />;
-      }}
+      <Component />
     </Route>
   );
 }

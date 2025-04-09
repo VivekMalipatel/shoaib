@@ -67,3 +67,10 @@ export type InsertAvailability = z.infer<typeof insertAvailabilitySchema>;
 export type User = typeof users.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
 export type Availability = typeof availability.$inferSelect;
+
+// Additional helper types for the frontend
+export interface TimeSlot {
+  time: string;
+  isAvailable: boolean;
+  appointmentId?: number;
+}

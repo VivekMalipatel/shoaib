@@ -1,451 +1,336 @@
-import { useEffect, useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
-import { insertUserSchema } from "@shared/schema";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useAuth } from '@/hooks/use-auth';
+import { insertUserSchema } from '@shared/schema';
+import { Redirect } from 'wouter';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
+// Create a login schema for form validation
 const loginSchema = z.object({
-  username: z.string().min(1, { message: "Username is required" }),
-  password: z.string().min(1, { message: "Password is required" }),
-  role: z.enum(["doctor", "patient"]),
-  rememberMe: z.boolean().optional(),
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+// Use the existing insertUserSchema for registration
+const registerSchema = insertUserSchema;
+
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [location, navigate] = useLocation();
-  const { user, loginMutation, registerMutation, isLoading } = useAuth();
-  const [userType, setUserType] = useState<"patient" | "doctor">("patient");
+  const [activeTab, setActiveTab] = useState('login');
+  const { loginMutation, registerMutation, user } = useAuth();
   const { toast } = useToast();
 
-  // Redirect if user is already logged in
-  useEffect(() => {
-    if (user) {
-      if (user.role === "doctor") {
-        navigate("/");
-      } else {
-        navigate("/patient");
-      }
-    }
-  }, [user, navigate]);
-
-  // Login form
+  // Define login form
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "",
-      password: "",
-      role: "patient", // Default role
-      rememberMe: false,
+      username: '',
+      password: '',
     },
   });
 
-  // Register form
-  const registerForm = useForm<z.infer<typeof insertUserSchema>>({
-    resolver: zodResolver(insertUserSchema),
+  // Define registration form
+  const registerForm = useForm({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: "",
-      password: "",
-      confirmPassword: "",
-      email: "",
-      fullName: "",
-      role: "patient",
-      specialization: "",
-      licenseNumber: "",
-      phone: "",
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      fullName: '',
+      role: 'patient' as const,
+      phone: '',
+      specialization: '',
+      licenseNumber: '',
     },
   });
 
-  // Update form fields based on user type
-  useEffect(() => {
-    registerForm.setValue("role", userType);
-  }, [userType, registerForm]);
-
+  // Handle login submission
   const onLoginSubmit = (data: LoginFormValues) => {
-    console.log('Login form submitted:', data.username, 'as', data.role);
-    
-    // Store the selected role for post-login redirection
-    localStorage.setItem('selectedRole', data.role);
-    
-    // Use direct fetch approach to have more control over navigation
-    fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: data.username,
-        password: data.password
-      }),
-      credentials: 'include'
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Login failed: ' + response.status);
-      }
-      return response.json();
-    })
-    .then(userData => {
-      console.log('Login successful, user data:', userData);
-      
-      // Update the query cache with user data
-      queryClient.setQueryData(["/api/user"], userData);
-      
-      // Show success toast
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${userData.fullName}`
-      });
-      
-      // Navigate via the server-side redirect for proper routing
-      console.log('Navigating to dashboard via redirect for role:', userData.role);
-      
-      // Use the special auth-redirect endpoint we created
-      window.location.href = '/auth-redirect';
-    })
-    .catch(error => {
-      console.error('Login error:', error);
-      
-      // Show error toast
-      toast({
-        title: "Login failed",
-        description: "Invalid username or password",
-        variant: "destructive"
-      });
+    loginMutation.mutate(data, {
+      onSuccess: () => {
+        toast({
+          title: 'Login successful',
+          description: 'Welcome back!',
+        });
+      },
     });
   };
 
-  const onRegisterSubmit = (data: z.infer<typeof insertUserSchema>) => {
-    registerMutation.mutate(data);
+  // Handle registration submission
+  const onRegisterSubmit = (data: any) => {
+    registerMutation.mutate(data, {
+      onSuccess: () => {
+        toast({
+          title: 'Registration successful',
+          description: 'Your account has been created!',
+        });
+      },
+    });
   };
 
-  const isPending = loginMutation.isPending || registerMutation.isPending;
+  // If user is already logged in, redirect to dashboard
+  if (user) {
+    return user.role === 'doctor' ? <Redirect to="/" /> : <Redirect to="/patient" />;
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-neutral-50">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-neutral-800">
-            MediConnect
-          </h2>
-          <p className="mt-2 text-sm text-neutral-600">
-            Streamlining doctor-patient appointments
-          </p>
-        </div>
+    <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Left side: Form container */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-3xl font-bold text-center">
+                MediConnect
+              </CardTitle>
+              <CardDescription className="text-center">
+                Your healthcare management solution
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="login">Login</TabsTrigger>
+                  <TabsTrigger value="register">Register</TabsTrigger>
+                </TabsList>
 
-        {/* Login Form */}
-        {isLogin ? (
-          <div className="bg-white p-8 rounded-lg shadow-md">
-            <h3 className="text-xl font-medium text-neutral-800 mb-6">Sign in to your account</h3>
-            <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-6">
-                <FormField
-                  control={loginForm.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Username</FormLabel>
-                      <FormControl>
-                        <Input placeholder="username" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={loginForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="******" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={loginForm.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Login as</FormLabel>
-                      <Select 
-                        onValueChange={(value: "patient" | "doctor") => {
-                          field.onChange(value);
-                        }}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="patient">Patient</SelectItem>
-                          <SelectItem value="doctor">Doctor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={loginForm.control}
-                  name="rememberMe"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
+                {/* Login Tab */}
+                <TabsContent value="login">
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                      <FormField
+                        control={loginForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter your username" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••••" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                        {loginMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Please wait
+                          </>
+                        ) : (
+                          'Login'
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+
+                {/* Registration Tab */}
+                <TabsContent value="register">
+                  <Form {...registerForm}>
+                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                      <FormField
+                        control={registerForm.control}
+                        name="fullName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="John Smith" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="johnsmith" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="john@example.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={registerForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" placeholder="••••••••" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Remember me</FormLabel>
+                        <FormField
+                          control={registerForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Confirm</FormLabel>
+                              <FormControl>
+                                <Input type="password" placeholder="••••••••" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
-                    </FormItem>
-                  )}
-                />
 
-                <Button type="submit" className="w-full" disabled={isPending}>
-                  {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Sign in
-                </Button>
+                      <FormField
+                        control={registerForm.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>I am a</FormLabel>
+                            <select
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              {...field}
+                            >
+                              <option value="patient">Patient</option>
+                              <option value="doctor">Doctor</option>
+                            </select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                <div className="flex items-center justify-center">
-                  <div className="text-sm">
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="font-medium text-primary-500 hover:text-primary-400"
-                      onClick={() => setIsLogin(false)}
-                    >
-                      Don't have an account? Register
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </Form>
-          </div>
-        ) : (
-          <div className="bg-white p-8 rounded-lg shadow-md">
-            <h3 className="text-xl font-medium text-neutral-800 mb-6">Create your account</h3>
-            <Form {...registerForm}>
-              <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-6">
-                <FormField
-                  control={registerForm.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>I am a</FormLabel>
-                      <Select 
-                        onValueChange={(value: "patient" | "doctor") => {
-                          field.onChange(value);
-                          setUserType(value);
-                        }}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select account type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="patient">Patient</SelectItem>
-                          <SelectItem value="doctor">Doctor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <FormField
+                        control={registerForm.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone (optional)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="+1 (555) 123-4567" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                <FormField
-                  control={registerForm.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={registerForm.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Username</FormLabel>
-                      <FormControl>
-                        <Input placeholder="johndoe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={registerForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email address</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="john@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={registerForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="******" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={registerForm.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm password</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="******" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {userType === "doctor" && (
-                  <>
-                    <FormField
-                      control={registerForm.control}
-                      name="specialization"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Specialization</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Cardiology" 
-                              value={field.value || ""} 
-                              onChange={field.onChange}
-                              onBlur={field.onBlur}
-                              name={field.name}
-                              disabled={field.disabled}
-                              ref={field.ref}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                      {registerForm.watch('role') === 'doctor' && (
+                        <>
+                          <FormField
+                            control={registerForm.control}
+                            name="specialization"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Specialization</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Cardiology" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={registerForm.control}
+                            name="licenseNumber"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>License Number</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="MD12345" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
                       )}
-                    />
 
-                    <FormField
-                      control={registerForm.control}
-                      name="licenseNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>License number</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="123456" 
-                              value={field.value || ""} 
-                              onChange={field.onChange}
-                              onBlur={field.onBlur}
-                              name={field.name}
-                              disabled={field.disabled}
-                              ref={field.ref}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
+                      <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                        {registerMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Please wait
+                          </>
+                        ) : (
+                          'Register'
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+            <CardFooter className="flex justify-center border-t pt-4">
+              <p className="text-sm text-muted-foreground">
+                {activeTab === 'login' ? "Don't have an account? " : "Already have an account? "}
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => setActiveTab(activeTab === 'login' ? 'register' : 'login')}
+                >
+                  {activeTab === 'login' ? 'Sign up' : 'Log in'}
+                </button>
+              </p>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
 
-                <FormField
-                  control={registerForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone number</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="+1 (555) 123-4567" 
-                          value={field.value || ""} 
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          disabled={field.disabled}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" className="w-full" disabled={isPending}>
-                  {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Register
-                </Button>
-
-                <div className="flex items-center justify-center">
-                  <div className="text-sm">
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="font-medium text-primary-500 hover:text-primary-400"
-                      onClick={() => setIsLogin(true)}
-                    >
-                      Already have an account? Sign in
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </Form>
+      {/* Right side: Hero section */}
+      <div className="flex-1 bg-primary-600 p-8 hidden md:flex flex-col justify-center items-center text-white">
+        <div className="max-w-lg">
+          <h1 className="text-4xl font-bold mb-4">Healthcare Management Made Simple</h1>
+          <p className="text-xl mb-6">
+            Connect with doctors, schedule appointments, and manage your healthcare journey all in one place.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/10 p-4 rounded-lg">
+              <h3 className="font-bold mb-2">For Patients</h3>
+              <p>Easy appointment booking with your preferred doctors</p>
+            </div>
+            <div className="bg-white/10 p-4 rounded-lg">
+              <h3 className="font-bold mb-2">For Doctors</h3>
+              <p>Efficient practice management and scheduling</p>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

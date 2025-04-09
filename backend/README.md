@@ -1,51 +1,80 @@
-# Medical Appointment Backend API
+# Medical Appointment System - Backend
 
-A Flask-based backend API for a medical appointment management system.
+This is the backend API for the Medical Appointment System, a web application that allows patients to book appointments with doctors.
+
+## Technology Stack
+
+- **Flask**: Web framework
+- **SQLAlchemy**: ORM for database operations
+- **Flask-JWT-Extended**: Authentication with JWT tokens
+- **PostgreSQL**: Database
+- **Flask-Migrate**: Database migrations
+- **Flask-CORS**: Cross-Origin Resource Sharing
 
 ## Features
 
-- User authentication with JWT
-- Role-based access control (doctors and patients)
-- Appointment scheduling and management
+- User authentication and authorization (patients and doctors)
+- JWT token-based authentication
 - Doctor availability management
-- PostgreSQL database integration
+- Appointment booking and management
+- RESTful API endpoints
 
 ## API Endpoints
 
 ### Authentication
-
-- POST `/api/register` - Register a new user
-- POST `/api/login` - User login
-- POST `/api/refresh` - Refresh access token
-- GET `/api/user` - Get current user information
-- POST `/api/logout` - User logout
+- `POST /api/register`: Register a new user (patient or doctor)
+- `POST /api/login`: Login and get JWT tokens
+- `POST /api/refresh`: Refresh access token
+- `GET /api/user`: Get current user details
+- `POST /api/logout`: Logout (client-side token removal)
 
 ### Doctors
-
-- GET `/api/doctors` - Get all doctors
-- GET `/api/doctors/<doctor_id>/availability` - Get a doctor's availability
-- POST `/api/doctors/<doctor_id>/availability` - Add/update a doctor's availability
+- `GET /api/doctors`: Get all doctors
+- `GET /api/doctors/<id>/availability`: Get a doctor's availability
+- `POST /api/doctors/<id>/availability`: Add or update a doctor's availability
 
 ### Appointments
+- `POST /api/appointments`: Create a new appointment
+- `GET /api/appointments/doctor`: Get all appointments for the current doctor
+- `GET /api/appointments/patient`: Get all appointments for the current patient
+- `PUT /api/appointments/<id>`: Update an appointment
 
-- POST `/api/appointments` - Create a new appointment
-- GET `/api/appointments/doctor` - Get doctor's appointments
-- GET `/api/appointments/patient` - Get patient's appointments
-- PATCH `/api/appointments/<appointment_id>` - Update an appointment
+## Setup Instructions
 
-## Setup and Installation
-
-1. Clone the repository
-2. Setup a Python virtual environment: `python -m venv venv`
-3. Activate the environment:
-   - On Windows: `venv\Scripts\activate`
-   - On Unix/MacOS: `source venv/bin/activate`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Set up your `.env` file with necessary environment variables
-6. Initialize the database: 
+1. Create a virtual environment:
    ```
-   flask db init
-   flask db migrate -m "Initial migration"
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+3. Set up environment variables (create a `.env` file):
+   ```
+   SECRET_KEY=your_secret_key
+   JWT_SECRET_KEY=your_jwt_secret_key
+   DATABASE_URL=postgresql://username:password@hostname:port/database
+   ```
+
+4. Initialize the database:
+   ```
    flask db upgrade
    ```
-7. Run the application: `python run.py`
+
+5. Run the development server:
+   ```
+   python run.py
+   ```
+
+## Database Schema
+
+- **Users**: Stores user information (doctors and patients)
+- **Appointments**: Stores appointment details
+- **Availabilities**: Stores doctors' available time slots
+
+## Frontend Repository
+
+The frontend code for this application is available at: [Medical Appointment System Frontend](https://github.com/VivekMalipatel/shoaib-frontend)
