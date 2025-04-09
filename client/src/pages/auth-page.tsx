@@ -92,47 +92,53 @@ export default function AuthPage() {
     // Store the selected role for post-login redirection
     localStorage.setItem('selectedRole', data.role);
     
-    // Use loginMutation for consistent authentication handling
-    loginMutation.mutate(
-      { username: data.username, password: data.password },
-      {
-        onSuccess: (userData) => {
-          console.log('Login successful, user data:', userData);
-          
-          // Show success toast
-          toast({
-            title: "Login successful",
-            description: `Welcome back, ${userData.fullName}`
-          });
-          
-          // Navigation using both methods to ensure it works across environments
-          if (userData.role === 'doctor') {
-            console.log('Navigating to doctor dashboard');
-            // Try direct location change after a small delay to ensure state is updated
-            navigate('/');
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 100);
-          } else {
-            console.log('Navigating to patient dashboard');
-            navigate('/patient');
-            setTimeout(() => {
-              window.location.href = '/patient';
-            }, 100);
-          }
-        },
-        onError: (error) => {
-          console.error('Login error:', error);
-          
-          // Show error toast
-          toast({
-            title: "Login failed",
-            description: "Invalid username or password",
-            variant: "destructive"
-          });
-        }
+    // Use direct fetch approach to have more control over navigation
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: data.username,
+        password: data.password
+      }),
+      credentials: 'include'
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Login failed: ' + response.status);
       }
-    );
+      return response.json();
+    })
+    .then(userData => {
+      console.log('Login successful, user data:', userData);
+      
+      // Update the query cache with user data
+      queryClient.setQueryData(["/api/user"], userData);
+      
+      // Show success toast
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${userData.fullName}`
+      });
+      
+      // Navigate based on role using direct window location
+      if (userData.role === 'doctor') {
+        console.log('Navigating to doctor dashboard');
+        window.location.href = '/';
+      } else {
+        console.log('Navigating to patient dashboard');
+        window.location.href = '/patient';
+      }
+    })
+    .catch(error => {
+      console.error('Login error:', error);
+      
+      // Show error toast
+      toast({
+        title: "Login failed",
+        description: "Invalid username or password",
+        variant: "destructive"
+      });
+    });
   };
 
   const onRegisterSubmit = (data: z.infer<typeof insertUserSchema>) => {
