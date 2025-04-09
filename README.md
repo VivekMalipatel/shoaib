@@ -1,80 +1,133 @@
-# MediConnect - Medical Appointment Management System
+# MediConnect - Doctor-Patient Appointment Management System
 
-A comprehensive web application for managing medical appointments between doctors and patients.
+MediConnect is a full-stack application for managing doctor-patient appointments, allowing doctors to manage their availability and patients to book appointments.
 
 ## Features
 
-### For Doctors
-- View and manage appointments
-- Set availability with an interactive calendar
-- Manage patient records
-- Accept or cancel appointments
+- **Role-based Authentication System**
+  - Separate workflows for doctors and patients
+  - Secure password hashing with sessions
 
-### For Patients
-- Browse available doctors
-- Book appointments with preferred doctors
-- View and manage personal appointments
-- Access medical records
+- **Doctor Dashboard**
+  - View upcoming and past appointments
+  - Set and manage availability by day and time
+  - View appointment statistics
 
-## Technology Stack
+- **Patient Dashboard**
+  - Book appointments with available doctors
+  - View upcoming and past appointments
+  - Explore available doctors
 
-- **Frontend**: HTML, CSS, JavaScript
-- **Backend**: Node.js with Express
-- **Database**: In-memory database with Drizzle ORM
-- **Authentication**: Passport.js with session-based authentication
+- **Tech Stack**
+  - Frontend: React, TypeScript, TailwindCSS, shadcn/ui
+  - Backend: Express.js, Drizzle ORM
+  - Database: PostgreSQL
+
+## Screenshots
+
+- Login/Registration Screen
+- Doctor Dashboard
+- Patient Dashboard
+- Appointment Booking Interface
 
 ## Project Structure
 
-- `/client`: Frontend code and assets
-  - `/public`: Static HTML pages and assets
-  - `/src`: React components and TypeScript code
-- `/server`: Backend API and server code
-- `/shared`: Shared types and schemas
+```
+├── client/                 # Frontend React application
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── lib/            # Utility functions
+│   │   ├── pages/          # Page components
+│   │   └── types/          # TypeScript type definitions
+├── server/                 # Backend Express application
+│   ├── auth.ts             # Authentication logic
+│   ├── routes.ts           # API routes
+│   ├── storage.ts          # Database operations
+│   └── index.ts            # Server entry point
+├── shared/                 # Shared code between frontend and backend
+│   └── schema.ts           # Database schema and types
+└── backend/                # Legacy Python Flask backend (optional)
+```
 
-## Getting Started
+## Running Locally
 
 ### Prerequisites
 
-- Node.js v16 or higher
-- npm v8 or higher
+- Node.js (v16+)
+- PostgreSQL database
 
-### Installation
+### Setup
 
-1. Clone the repository
-```bash
-git clone https://github.com/your-username/mediconnect.git
-cd mediconnect
-```
+1. **Clone the repository**
+   ```
+   git clone https://github.com/yourusername/mediconnect.git
+   cd mediconnect
+   ```
 
-2. Install dependencies
-```bash
-npm install
-```
+2. **Install dependencies**
+   ```
+   npm install
+   ```
 
-3. Start the application
-```bash
-npm run dev
-```
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory with the following content:
+   ```
+   DATABASE_URL=postgres://username:password@localhost:5432/mediconnect
+   SESSION_SECRET=your-secret-key
+   PORT=5000
+   ```
 
-4. Access the application at `http://localhost:5000`
+4. **Initialize the database**
+   ```
+   npm run db:push
+   ```
 
-### Default Credentials
+5. **Start the development server**
+   ```
+   npm run dev
+   ```
 
-- **Doctor Account**:
+6. **Access the application**
+   
+   Open your browser and navigate to `http://localhost:5000`
+
+## Test Accounts
+
+The application comes with pre-configured test accounts:
+
+- **Doctor:**
   - Username: doctor
-  - Password: password
+  - Password: doctor123
 
-- **Patient Account**:
+- **Patient:**
   - Username: patient
-  - Password: password
+  - Password: patient123
 
-## Future Enhancements
+## API Documentation
 
-- Integration with real-time notification system
-- Telemedicine video consultation features
-- Medical record sharing functionality
-- Integration with external payment systems
-- Mobile app development
+### Authentication Endpoints
+- `POST /api/register` - Create a new user account
+- `POST /api/login` - Authenticate a user
+- `POST /api/logout` - Log out the current user
+- `GET /api/user` - Get the current authenticated user
+
+### Doctor Endpoints
+- `GET /api/doctors` - Get all doctors
+- `GET /api/doctors/:id/appointments` - Get a doctor's appointments
+- `GET /api/doctors/:id/availability` - Get a doctor's availability
+
+### Patient Endpoints
+- `GET /api/patients/:id/appointments` - Get a patient's appointments
+
+### Appointment Endpoints
+- `POST /api/appointments` - Create a new appointment
+- `PATCH /api/appointments/:id` - Update an appointment
+
+### Availability Endpoints
+- `POST /api/availability` - Create/update doctor availability
+- `PATCH /api/availability/:id` - Update availability
 
 ## License
 
