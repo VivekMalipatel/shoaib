@@ -54,7 +54,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (credentials: LoginData) => {
       console.log('Login attempt:', credentials.username);
       try {
-        const res = await apiRequest("POST", "/api/login", credentials);
+        // Make the login request
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(credentials),
+          credentials: "include",
+        });
+        
+        // Check for errors
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('Login server error:', res.status, errorText);
+          throw new Error(errorText || "Login failed");
+        }
+        
+        // Parse the response
         const userData = await res.json();
         console.log('Login success, user data:', userData);
         return userData;

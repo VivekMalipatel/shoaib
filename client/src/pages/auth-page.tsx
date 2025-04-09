@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 const loginSchema = z.object({
   username: z.string().min(1, { message: "Username is required" }),
   password: z.string().min(1, { message: "Password is required" }),
+  role: z.enum(["doctor", "patient"]),
   rememberMe: z.boolean().optional(),
 });
 
@@ -56,6 +57,7 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
+      role: "patient", // Default role
       rememberMe: false,
     },
   });
@@ -82,11 +84,28 @@ export default function AuthPage() {
   }, [userType, registerForm]);
 
   const onLoginSubmit = (data: LoginFormValues) => {
-    console.log('Login form submitted:', data.username);
+    console.log('Login form submitted:', data.username, 'as', data.role);
     try {
+      // Store the selected role for post-login redirection
+      localStorage.setItem('selectedRole', data.role);
+      
       loginMutation.mutate({
         username: data.username,
         password: data.password,
+      }, {
+        onSuccess: (userData) => {
+          // Check if the logged-in user's role matches the selected role
+          if (userData.role !== data.role) {
+            console.warn('User logged in with a different role than their account type');
+          }
+          
+          // Navigate to the appropriate dashboard based on the user's actual role
+          if (userData.role === 'doctor') {
+            navigate('/');
+          } else {
+            navigate('/patient');
+          }
+        }
       });
     } catch (error) {
       console.error('Error during login mutation:', error);
@@ -139,6 +158,32 @@ export default function AuthPage() {
                       <FormControl>
                         <Input type="password" placeholder="******" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={loginForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Login as</FormLabel>
+                      <Select 
+                        onValueChange={(value: "patient" | "doctor") => {
+                          field.onChange(value);
+                        }}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="patient">Patient</SelectItem>
+                          <SelectItem value="doctor">Doctor</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -293,7 +338,15 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Specialization</FormLabel>
                           <FormControl>
-                            <Input placeholder="Cardiology" {...field} />
+                            <Input 
+                              placeholder="Cardiology" 
+                              value={field.value || ""} 
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              disabled={field.disabled}
+                              ref={field.ref}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -307,7 +360,15 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>License number</FormLabel>
                           <FormControl>
-                            <Input placeholder="123456" {...field} />
+                            <Input 
+                              placeholder="123456" 
+                              value={field.value || ""} 
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              disabled={field.disabled}
+                              ref={field.ref}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -323,7 +384,15 @@ export default function AuthPage() {
                     <FormItem>
                       <FormLabel>Phone number</FormLabel>
                       <FormControl>
-                        <Input placeholder="+1 (555) 123-4567" {...field} />
+                        <Input 
+                          placeholder="+1 (555) 123-4567" 
+                          value={field.value || ""} 
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          disabled={field.disabled}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
