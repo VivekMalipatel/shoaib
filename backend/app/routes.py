@@ -14,6 +14,10 @@ from datetime import datetime
 
 bp = Blueprint('api', __name__)
 
+# Create a separate blueprint for availability routes
+availability_routes = Blueprint('availability', __name__)
+bp.register_blueprint(availability_routes)
+
 @bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json() or {}
@@ -137,17 +141,19 @@ def get_doctors():
     doctors = User.query.filter_by(role='doctor').all()
     return jsonify([doctor.to_dict() for doctor in doctors]), 200
 
-@bp.route('/doctors/<int:doctor_id>/availability', methods=['GET'])
+@availability_routes.route('/doctors/<int:doctor_id>/availability', methods=['GET'])
 def get_doctor_availability(doctor_id):
     availabilities = Availability.query.filter_by(doctor_id=doctor_id).all()
     return jsonify([a.to_dict() for a in availabilities]), 200
 
-@bp.route('/doctors/<int:doctor_id>/availability', methods=['POST'])
-@jwt_required()
+@availability_routes.route('/doctors/<int:doctor_id>/availability', methods=['POST'])
 def add_doctor_availability(doctor_id):
-    # Verify the doctor is adding their own availability
-    identity = get_jwt_identity()
-    user = User.query.get(int(identity))
+    # Get user from session instead of JWT
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+        
+    user = User.query.get(user_id)
     
     if not user or user.role != 'doctor' or user.id != doctor_id:
         return jsonify({'error': 'Unauthorized'}), 403

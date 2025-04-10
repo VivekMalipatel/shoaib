@@ -17,7 +17,7 @@ function getCsrfToken() {
   }
 
   const token = csrfCookie.split('=')[1];
-  console.log('Extracted CSRF Token:', token);
+  console.log('Extracted CSRF Token:', token); // Debugging log
   return token;
 }
 
@@ -36,6 +36,8 @@ export async function apiRequestFlask<T>(
     ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
   };
 
+  console.log('Request Headers:', headers); // Debugging log
+
   const response = await fetch(url, {
     method,
     headers,
@@ -45,6 +47,7 @@ export async function apiRequestFlask<T>(
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error('API Request Error:', errorText); // Debugging log
     throw new Error(errorText || `Error ${response.status}: ${response.statusText}`);
   }
 

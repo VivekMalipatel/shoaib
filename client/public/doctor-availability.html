@@ -203,6 +203,24 @@
             // Variable to store the current user/doctor ID
             let currentUserId = null;
             let loadingMessage = null;
+            let csrfToken = null; // Added variable to store CSRF token
+            
+            // Fetch CSRF token first
+            fetch('/api/csrf-token')
+                .then(response => response.json())
+                .then(data => {
+                    csrfToken = data.csrf_token;
+                    console.log('CSRF token fetched successfully');
+                    
+                    // Store it in localStorage for persistence
+                    localStorage.setItem('csrfToken', csrfToken);
+                })
+                .catch(error => {
+                    console.error('Error fetching CSRF token:', error);
+                    
+                    // Try to get from localStorage as fallback
+                    csrfToken = localStorage.getItem('csrfToken');
+                });
 
             // Check if user is authenticated as a doctor
             fetch('/api/user')
@@ -287,6 +305,37 @@
             document.getElementById('save-availability').addEventListener('click', function() {
                 if (!selectedDate || !currentUserId) return;
                 
+                if (!csrfToken) {
+                    console.error('CSRF token not available. Fetching it now...');
+                    // Try to fetch the token again if not available
+                    fetch('/api/csrf-token')
+                        .then(response => response.json())
+                        .then(data => {
+                            csrfToken = data.csrf_token;
+                            console.log('CSRF token fetched successfully, retry saving');
+                            saveAvailability();
+                        })
+                        .catch(error => {
+                            console.error('Error fetching CSRF token:', error);
+                            // Show error to the user
+                            const feedback = document.createElement('div');
+                            feedback.style.backgroundColor = '#fee2e2';
+                            feedback.style.color = '#b91c1c';
+                            feedback.style.padding = '0.5rem';
+                            feedback.style.borderRadius = '4px';
+                            feedback.style.marginTop = '1rem';
+                            feedback.textContent = 'Failed to get security token. Please refresh the page and try again.';
+                            document.getElementById('save-availability').parentNode.appendChild(feedback);
+                            setTimeout(() => feedback.remove(), 5000);
+                        });
+                    return;
+                }
+                
+                saveAvailability();
+            });
+            
+            // Function to save availability
+            function saveAvailability() {
                 // Get the day of week (0-6, where 0 is Sunday)
                 const dayOfWeek = selectedDate.getDay();
                 
@@ -318,26 +367,49 @@
                     isAvailable: anySlotAvailable
                 };
                 
+                // Log the data being sent
+                console.log('Saving availability data:', availabilityData);
+                
                 // Show saving state
                 const saveButton = document.getElementById('save-availability');
                 const originalText = saveButton.textContent;
                 saveButton.textContent = 'Saving...';
                 saveButton.disabled = true;
                 
+                // Get CSRF token - try from variable first, then localStorage as backup
+                const token = csrfToken || localStorage.getItem('csrfToken');
+                
+                // Prepare headers
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                // Add CSRF token if available
+                if (token) {
+                    headers['X-CSRFToken'] = token;
+                }
+                
                 // Send data to the server
                 fetch(`/api/doctors/${currentUserId}/availability`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // Include auth token if you're using JWT in cookies
-                        // 'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                    },
+                    headers: headers,
                     body: JSON.stringify(availabilityData),
                     credentials: 'include' // Include credentials for session cookies
                 })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Failed to save availability');
+                        // Log response status for debugging
+                        console.error('Server returned status:', response.status);
+                        
+                        // Try to get more information from the response
+                        return response.json().then(errorData => {
+                            throw new Error(`Failed to save availability: ${errorData.error || response.statusText}`);
+                        }).catch(err => {
+                            if (err instanceof SyntaxError) {
+                                throw new Error(`Failed to save availability: ${response.statusText}`);
+                            }
+                            throw err;
+                        });
                     }
                     return response.json();
                 })
@@ -371,22 +443,22 @@
                     feedback.style.padding = '0.5rem';
                     feedback.style.borderRadius = '4px';
                     feedback.style.marginTop = '1rem';
-                    feedback.textContent = 'Failed to save availability. Please try again.';
+                    feedback.textContent = error.message || 'Failed to save availability. Please try again.';
                     
                     // Insert the feedback message after the save button
                     saveButton.parentNode.appendChild(feedback);
                     
-                    // Remove the message after 3 seconds
+                    // Remove the message after 5 seconds
                     setTimeout(() => {
                         feedback.remove();
-                    }, 3000);
+                    }, 5000);
                 })
                 .finally(() => {
                     // Reset button state
                     saveButton.textContent = originalText;
                     saveButton.disabled = false;
                 });
-            });
+            }
 
             // Helper function to update the calendar
             function updateCalendar() {

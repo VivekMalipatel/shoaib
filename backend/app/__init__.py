@@ -20,7 +20,11 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+    
+    # Configure CSRF protection to work with AJAX requests
     csrf.init_app(app)
+    app.config['WTF_CSRF_CHECK_DEFAULT'] = False  # Disable automatic CSRF checks
+    app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken']  # Accept CSRF token from this header
     
     # Enable CORS with credentials support
     CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
@@ -29,8 +33,9 @@ def create_app(config_class=Config):
     from app.routes import bp as api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
     
-    # Configure CSRF to exempt certain routes
-    csrf.exempt(api_bp)  # We'll handle CSRF manually with JWT
+    # Exempt specific routes from CSRF protection if needed
+    from app.routes import availability_routes
+    csrf.exempt(availability_routes)
     
     # Handle errors
     @app.errorhandler(404)
@@ -66,8 +71,13 @@ def create_app(config_class=Config):
     # Add route to get CSRF token
     @app.route('/api/csrf-token', methods=['GET'])
     def get_csrf_token():
-        from flask import jsonify
-        return jsonify({'csrf_token': csrf._get_token()})
+        from flask import jsonify, session
+        from flask_wtf.csrf import generate_csrf
+        
+        # Generate a CSRF token using the proper function
+        token = generate_csrf()
+        
+        return jsonify({'csrf_token': token})
     
     # Serve the React app - catch all route
     @app.route('/', defaults={'path': ''})
