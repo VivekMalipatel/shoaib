@@ -38,9 +38,27 @@ export default function PatientDashboard() {
     queryKey: ['/api/patients', user?.id, 'appointments'],
     queryFn: async () => {
       if (!user?.id) return [];
-      const res = await apiRequest('GET', `/api/patients/${user.id}/appointments`);
-      const data = await res.json();
-      return data as Appointment[];
+      
+      try {
+        // First try with Flask
+        try {
+          const { getPatientAppointments } = await import('../lib/flaskApi');
+          const data = await getPatientAppointments();
+          console.log('Fetched patient appointments from Flask', data);
+          return data as Appointment[];
+        } catch (flaskError) {
+          console.warn('Failed to fetch patient appointments from Flask', flaskError);
+          
+          // Fall back to Express
+          const res = await apiRequest('GET', `/api/patients/${user.id}/appointments`);
+          const data = await res.json();
+          console.log('Fetched patient appointments from Express', data);
+          return data as Appointment[];
+        }
+      } catch (error) {
+        console.error('Error fetching patient appointments:', error);
+        throw error;
+      }
     },
     enabled: !!user?.id,
   });
@@ -49,9 +67,26 @@ export default function PatientDashboard() {
   const { data: doctors = [], isLoading: doctorsLoading } = useQuery({
     queryKey: ['/api/doctors'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/doctors');
-      const data = await res.json();
-      return data as UserType[];
+      try {
+        // First try with Flask
+        try {
+          const { getDoctors } = await import('../lib/flaskApi');
+          const data = await getDoctors();
+          console.log('Fetched doctors from Flask', data);
+          return data as UserType[];
+        } catch (flaskError) {
+          console.warn('Failed to fetch doctors from Flask', flaskError);
+          
+          // Fall back to Express
+          const res = await apiRequest('GET', '/api/doctors');
+          const data = await res.json();
+          console.log('Fetched doctors from Express', data);
+          return data as UserType[];
+        }
+      } catch (error) {
+        console.error('Error fetching doctors:', error);
+        throw error;
+      }
     },
   });
 
@@ -64,8 +99,26 @@ export default function PatientDashboard() {
       type: string;
       notes?: string;
     }) => {
-      const res = await apiRequest('POST', '/api/appointments', data);
-      return res.json();
+      try {
+        // First try with Flask
+        try {
+          const { createAppointment } = await import('../lib/flaskApi');
+          const result = await createAppointment(data);
+          console.log('Created appointment with Flask', result);
+          return result;
+        } catch (flaskError) {
+          console.warn('Failed to create appointment with Flask', flaskError);
+          
+          // Fall back to Express
+          const res = await apiRequest('POST', '/api/appointments', data);
+          const result = await res.json();
+          console.log('Created appointment with Express', result);
+          return result;
+        }
+      } catch (error) {
+        console.error('Error creating appointment:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/patients', user?.id, 'appointments'] });

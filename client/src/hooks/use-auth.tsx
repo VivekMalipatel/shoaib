@@ -58,7 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.warn('Flask get user failed, falling back to Express:', flaskError);
           
           // Fall back to Express backend
-          // Fall back to Express backend
           const expressQueryFn = getQueryFn({ on401: "returnNull" });
           return await expressQueryFn({ queryKey: ["/api/user"] } as any);
         }
