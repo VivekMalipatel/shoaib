@@ -528,7 +528,10 @@
                     // Update the appointment in our data array
                     const index = appointments.findIndex(a => a.id == appointmentId);
                     if (index !== -1) {
+                        // Preserve the patient name and other important fields when updating the appointment
+                        const patientName = appointments[index].patientName;
                         appointments[index] = data;
+                        appointments[index].patientName = patientName || appointments[index].patientName;
                     }
                     
                     // Re-render the appointments
@@ -537,8 +540,9 @@
                     // Close modal if it's open
                     document.getElementById('appointment-modal').style.display = 'none';
                     
-                    // Show success message
+                    // Show success message and reload page
                     alert('Appointment marked as completed');
+                    window.location.reload();
                 })
                 .catch(error => {
                     console.error('Error completing appointment:', error);

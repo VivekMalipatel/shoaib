@@ -478,7 +478,7 @@
             function addAppointmentToList(listId, appointment) {
                 const list = document.getElementById(listId);
                 
-                // Format date
+                // Format date in Chicago timezone
                 const appointmentDate = new Date(appointment.date);
                 const today = getChicagoDate();
                 today.setHours(0, 0, 0, 0);
@@ -486,11 +486,14 @@
                 const tomorrow = new Date(today);
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 
+                // Format the appointment date using Chicago timezone
+                const appointmentDateInChicago = formatInChicagoTimezone(appointmentDate, {});
+                
                 let dateDisplay;
                 
-                if (appointmentDate.toDateString() === today.toDateString()) {
+                if (new Date(appointmentDateInChicago).toDateString() === today.toDateString()) {
                     dateDisplay = 'Today';
-                } else if (appointmentDate.toDateString() === tomorrow.toDateString()) {
+                } else if (new Date(appointmentDateInChicago).toDateString() === tomorrow.toDateString()) {
                     dateDisplay = 'Tomorrow';
                 } else {
                     dateDisplay = formatInChicagoTimezone(appointmentDate, { 
@@ -500,7 +503,7 @@
                     });
                 }
                 
-                // Format time
+                // Format time in Chicago timezone
                 const timeDisplay = formatInChicagoTimezone(appointmentDate, { 
                     hour: 'numeric', 
                     minute: '2-digit',
@@ -522,7 +525,7 @@
                 
                 appointmentItem.innerHTML = `
                     <div class="appointment-details">
-                        <div><strong>Dr. ${appointment.doctorName}</strong> - ${appointment.doctorSpecialization || 'Specialist'} <span class="badge ${badgeClass}">${appointment.status}</span></div>
+                        <div><strong>${appointment.doctorName}</strong> - ${appointment.doctorSpecialization || 'Specialist'} <span class="badge ${badgeClass}">${appointment.status}</span></div>
                         <div>${dateDisplay} at ${timeDisplay} - ${appointment.type}</div>
                     </div>
                     <div class="appointment-actions">
@@ -547,9 +550,9 @@
                         currentAppointment = currentAppointments.find(a => a.id == appointmentId);
                         
                         if (currentAppointment) {
-                            // Format date for display
+                            // Format date for display in Chicago timezone
                             const appointmentDate = new Date(currentAppointment.date);
-                            const dateTimeDisplay = appointmentDate.toLocaleDateString('en-US', { 
+                            const dateTimeDisplay = formatInChicagoTimezone(appointmentDate, { 
                                 weekday: 'long',
                                 month: 'long', 
                                 day: 'numeric',
@@ -559,7 +562,7 @@
                                 hour12: true
                             });
                             
-                            document.getElementById('modal-doctor-name').textContent = `Dr. ${currentAppointment.doctorName}`;
+                            document.getElementById('modal-doctor-name').textContent = currentAppointment.doctorName;
                             document.getElementById('modal-specialization').textContent = currentAppointment.doctorSpecialization || 'Specialist';
                             document.getElementById('modal-date-time').textContent = dateTimeDisplay;
                             document.getElementById('modal-type').textContent = currentAppointment.type;
@@ -623,7 +626,7 @@
                     // Update the appointment in our data
                     const index = currentAppointments.findIndex(a => a.id == appointmentId);
                     if (index !== -1) {
-                        // Preserve the doctor name when updating the appointment
+                        // Preserve the doctor name and specialization when updating the appointment
                         const doctorName = currentAppointments[index].doctorName;
                         const doctorSpecialization = currentAppointments[index].doctorSpecialization;
                         
@@ -640,8 +643,9 @@
                     // Close modal if it's open
                     document.getElementById('appointment-modal').style.display = 'none';
                     
-                    // Show success message
+                    // Show success message and reload page
                     alert('Appointment cancelled successfully');
+                    window.location.reload();
                 })
                 .catch(error => {
                     console.error('Error cancelling appointment:', error);
@@ -719,7 +723,7 @@
             // Cancel appointment from modal
             modalCancelBtn.addEventListener('click', function() {
                 if (currentAppointment) {
-                    if (confirm(`Are you sure you want to cancel your appointment with Dr. ${currentAppointment.doctorName}?`)) {
+                    if (confirm(`Are you sure you want to cancel your appointment with ${currentAppointment.doctorName}?`)) {
                         cancelAppointment(currentAppointment.id);
                     }
                 }

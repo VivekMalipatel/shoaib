@@ -346,12 +346,12 @@
                         doctorCard.innerHTML = `
                             <div class="doctor-avatar">${nameInitials || '👨‍⚕️'}</div>
                             <div class="doctor-info">
-                                <h3>Dr. ${doctor.fullName || doctor.full_name || 'Unknown'}</h3>
+                                <h3>${doctor.fullName || doctor.full_name || 'Unknown'}</h3>
                                 <p>${doctor.specialization || 'General Practice'}</p>
                                 <p id="availability-${doctor.id}">Checking availability...</p>
                                 <button class="btn book-btn" 
                                     data-doctor-id="${doctor.id}" 
-                                    data-doctor-name="Dr. ${doctor.fullName || doctor.full_name || 'Unknown'}" 
+                                    data-doctor-name="${doctor.fullName || doctor.full_name || 'Unknown'}" 
                                     data-specialization="${doctor.specialization || 'General Practice'}">
                                     Book Appointment
                                 </button>
@@ -822,19 +822,28 @@
                 // Combine date and time
                 const [hours, minutes] = appointmentTimeStr.split(':').map(Number);
                 
-                // Use Chicago timezone for creating appointment dates
+                // Create a local date object with the appointment date and time
                 const [year, month, day] = currentAppointmentDate.split('-').map(Number);
+                const localAppointmentDate = new Date(year, month - 1, day, hours, minutes, 0);
                 
-                // Create a date string in ISO format with Chicago timezone
-                // Format: YYYY-MM-DDTHH:MM:SS.sssZ
-                const appointmentDateISO = new Date(Date.UTC(
-                    year,
-                    month - 1, // JS months are 0-indexed
-                    day,
-                    hours - 5, // Convert to UTC (Chicago is UTC-5 or UTC-6 depending on DST)
-                    minutes,
-                    0
-                )).toISOString();
+                // Convert to ISO string for the API
+                const appointmentDateISO = localAppointmentDate.toISOString();
+                
+                console.log('Booking appointment in Chicago timezone:', {
+                    selectedDate: currentAppointmentDate,
+                    time: appointmentTimeStr,
+                    localDate: localAppointmentDate.toString(),
+                    isoDate: appointmentDateISO,
+                    chicagoTime: formatInChicagoTimezone(localAppointmentDate, {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                    })
+                });
                 
                 const appointmentData = {
                     doctorId: currentDoctorId,

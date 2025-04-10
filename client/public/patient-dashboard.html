@@ -254,7 +254,7 @@
                         const appointmentItem = document.createElement('div');
                         appointmentItem.className = 'appointment-item';
                         appointmentItem.innerHTML = `
-                            <strong>${dateDisplay}, ${timeDisplay}</strong> - Dr. ${appointment.doctorName} (${appointment.type})
+                            <strong>${dateDisplay}, ${timeDisplay}</strong> - ${appointment.doctorName} (${appointment.type})
                         `;
                         
                         appointmentsList.appendChild(appointmentItem);
@@ -306,7 +306,7 @@
                         doctorItem.className = 'doctor-item';
                         doctorItem.innerHTML = `
                             <div>
-                                <strong>Dr. ${doctor.full_name || doctor.fullName}</strong> - ${doctor.specialization || 'General'}
+                                <strong>${doctor.full_name || doctor.fullName}</strong> - ${doctor.specialization || 'General'}
                             </div>
                             <a href="/patient-find-doctors.html"><button class="btn btn-sm">Book</button></a>
                         `;
