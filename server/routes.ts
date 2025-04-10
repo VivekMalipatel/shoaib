@@ -1,9 +1,32 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { z } from "zod";
 import { insertAppointmentSchema, insertAvailabilitySchema } from "@shared/schema";
+
+// Authentication middleware
+function ensureAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized" });
+}
+
+// Role-based access control middleware
+function ensureRole(roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: `Access denied. Required role: ${roles.join(' or ')}` });
+    }
+
+    next();
+  };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
@@ -173,6 +196,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updatedAvailability);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Get user profile
+  app.get("/api/profile", ensureAuthenticated, (req, res) => {
+    // Remove sensitive information
+    const { password, ...userProfile } = req.user;
+    res.json(userProfile);
+  });
+
+  // Update user profile
+  app.patch("/api/profile", ensureAuthenticated, async (req, res, next) => {
+    try {
+      // Only allow updating certain fields
+      const allowedFields = [
+        "fullName", 
+        "phone", 
+        "email",
+        // Doctor-specific fields
+        "specialization", 
+        "licenseNumber"
+      ];
+      
+      // Filter out disallowed fields
+      const updateData: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (field in req.body) {
+          updateData[field] = req.body[field];
+        }
+      }
+      
+      // Special case for doctors - they can only update doctor-specific fields
+      if (req.user.role === "doctor") {
+        if ("specialization" in req.body) {
+          updateData.specialization = req.body.specialization;
+        }
+        if ("licenseNumber" in req.body) {
+          updateData.licenseNumber = req.body.licenseNumber;
+        }
+      }
+      
+      // Update the user
+      const updatedUser = await storage.updateUser(req.user.id, updateData);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Remove sensitive information
+      const { password, ...userProfile } = updatedUser;
+      res.json(userProfile);
     } catch (err) {
       next(err);
     }

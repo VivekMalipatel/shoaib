@@ -13,6 +13,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: Omit<InsertUser, "confirmPassword">): Promise<User>;
+  updateUser(id: number, data: Partial<User>): Promise<User | undefined>;
   getDoctors(): Promise<User[]>;
   getAppointmentsByDoctor(doctorId: number): Promise<Appointment[]>;
   getAppointmentsByPatient(patientId: number): Promise<Appointment[]>;
@@ -122,6 +123,26 @@ export class MemStorage implements IStorage {
     
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUser(id: number, data: Partial<User>): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    // Ensure sensitive fields can't be updated
+    const safeData: Partial<User> = { ...data };
+    delete safeData.id;
+    delete safeData.role; // Don't allow role changes
+    delete safeData.createdAt;
+    
+    // Only update password if specifically requested and properly hashed
+    if (typeof data.password !== 'string' || data.password.length < 30) {
+      delete safeData.password;
+    }
+    
+    const updatedUser = { ...user, ...safeData };
+    this.users.set(id, updatedUser);
+    return updatedUser;
   }
 
   async getDoctors(): Promise<User[]> {
@@ -244,6 +265,26 @@ export class DatabaseStorage implements IStorage {
     }).returning();
     
     return result[0];
+  }
+  
+  async updateUser(id: number, data: Partial<User>): Promise<User | undefined> {
+    // Ensure sensitive fields can't be updated
+    const safeData: Partial<User> = { ...data };
+    delete safeData.id;
+    delete safeData.role; // Don't allow role changes
+    delete safeData.createdAt;
+    
+    // Only update password if specifically requested and properly hashed
+    if (typeof data.password !== 'string' || data.password.length < 30) {
+      delete safeData.password;
+    }
+    
+    const result = await db.update(users)
+      .set(safeData)
+      .where(eq(users.id, id))
+      .returning();
+    
+    return result.length > 0 ? result[0] : undefined;
   }
 
   async getDoctors(): Promise<User[]> {
