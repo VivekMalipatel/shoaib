@@ -46,7 +46,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
   } = useQuery<SelectUser | null>({
     queryKey: ["/api/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: async () => {
+      try {
+        // First try Flask backend
+        try {
+          const { getCurrentUser } = await import('../lib/flaskApi');
+          const user = await getCurrentUser();
+          console.log('Get current user success with Flask API:', user);
+          return user;
+        } catch (flaskError) {
+          console.warn('Flask get user failed, falling back to Express:', flaskError);
+          
+          // Fall back to Express backend
+          // Fall back to Express backend
+          const expressQueryFn = getQueryFn({ on401: "returnNull" });
+          return await expressQueryFn({ queryKey: ["/api/user"] } as any);
+        }
+      } catch (error) {
+        console.error('Get user error:', error);
+        return null;
+      }
+    },
   });
 
   // Login mutation

@@ -3,7 +3,8 @@
  */
 
 // Base URL for the Flask API
-const FLASK_API_BASE_URL = 'http://localhost:5001/api';
+// Use the public URL from Replit with the correct port for Flask
+const FLASK_API_BASE_URL = window.location.protocol + '//' + window.location.hostname + ':5001/api';
 
 export async function apiRequestFlask<T>(
   method: string,

@@ -1,16 +1,11 @@
-#!/bin/bash
+#!/bin/sh
 
-# Start the backend in the background
-echo "Starting backend..."
-cd backend && export $(grep -v '^#' .env | xargs) && python run.py &
-BACKEND_PID=$!
+# Start Flask in the background
+cd backend && python run.py &
+FLASK_PID=$!
 
-# Wait for the backend to start
-sleep 5
+# Start Express in the foreground
+npm run dev
 
-# Start the frontend
-echo "Starting frontend..."
-cd shoaib-frontend && npm start
-
-# Kill the backend when the script is terminated
-trap "kill $BACKEND_PID" EXIT
+# When Express terminates, also kill Flask
+kill $FLASK_PID
