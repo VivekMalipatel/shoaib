@@ -70,6 +70,7 @@ class Availability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     day_of_week = db.Column(db.Integer, nullable=False)  # Changed from date to match schema
+    date = db.Column(db.Date, nullable=True)  # New field for specific date
     start_time = db.Column(db.String(10), nullable=False)  # Changed from time_slots to match schema
     end_time = db.Column(db.String(10), nullable=False)  # Added to match schema
     is_available = db.Column(db.Boolean, default=True, nullable=False)  # Added to match schema
@@ -79,6 +80,7 @@ class Availability(db.Model):
             'id': self.id,
             'doctorId': self.doctor_id,
             'dayOfWeek': self.day_of_week,
+            'date': self.date.isoformat() if self.date else None,
             'startTime': self.start_time,
             'endTime': self.end_time,
             'isAvailable': self.is_available

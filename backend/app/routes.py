@@ -163,11 +163,26 @@ def add_doctor_availability(doctor_id):
     if not all(k in data for k in ('dayOfWeek', 'startTime', 'endTime', 'isAvailable')):
         return jsonify({'error': 'Missing required fields'}), 400
     
-    # Check if availability already exists for this day of week
-    existing = Availability.query.filter_by(
-        doctor_id=doctor_id, 
-        day_of_week=data['dayOfWeek']
-    ).first()
+    # If date is provided, we're dealing with a specific date availability
+    specific_date = None
+    if 'date' in data and data['date']:
+        try:
+            specific_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+        
+        # Check if availability already exists for this specific date
+        existing = Availability.query.filter_by(
+            doctor_id=doctor_id, 
+            date=specific_date
+        ).first()
+    else:
+        # Check if availability already exists for this day of week
+        existing = Availability.query.filter_by(
+            doctor_id=doctor_id, 
+            day_of_week=data['dayOfWeek'],
+            date=None  # No specific date
+        ).first()
     
     if existing:
         # Update existing availability
@@ -181,6 +196,7 @@ def add_doctor_availability(doctor_id):
         availability = Availability(
             doctor_id=doctor_id,
             day_of_week=data['dayOfWeek'],
+            date=specific_date,
             start_time=data['startTime'],
             end_time=data['endTime'],
             is_available=data['isAvailable']

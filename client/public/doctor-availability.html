@@ -339,6 +339,9 @@
                 // Get the day of week (0-6, where 0 is Sunday)
                 const dayOfWeek = selectedDate.getDay();
                 
+                // Format the full date in YYYY-MM-DD format for API
+                const formattedDate = selectedDate.toISOString().split('T')[0];
+                
                 // Find the earliest and latest available time slots
                 let startHour = 24;
                 let endHour = 0;
@@ -362,6 +365,7 @@
                 // Create availability data object
                 const availabilityData = {
                     dayOfWeek: dayOfWeek,
+                    date: formattedDate,  // Add specific date
                     startTime: `${startHour.toString().padStart(2, '0')}:00`,
                     endTime: `${endHour.toString().padStart(2, '0')}:00`,
                     isAvailable: anySlotAvailable
@@ -531,11 +535,14 @@
                 // Get day of week (0-6, where 0 is Sunday)
                 const dayOfWeek = selectedDate.getDay();
                 
+                // Format date for API
+                const formattedDate = selectedDate.toISOString().split('T')[0];
+                
                 // Show loading state
                 const slotList = document.getElementById('slot-list');
                 slotList.innerHTML = '<p>Loading time slots...</p>';
                 
-                // Fetch availability from the server based on day of week
+                // Fetch availability from the server
                 fetch(`/api/doctors/${currentUserId}/availability`)
                     .then(response => {
                         if (!response.ok) {
@@ -544,8 +551,13 @@
                         return response.json();
                     })
                     .then(availabilities => {
-                        // Find availability for the selected day of week
-                        const dayAvailability = availabilities.find(a => a.dayOfWeek === dayOfWeek);
+                        // First try to find availability for the specific date
+                        let dayAvailability = availabilities.find(a => a.date === formattedDate);
+                        
+                        // If no specific date entry exists, fall back to day of week
+                        if (!dayAvailability) {
+                            dayAvailability = availabilities.find(a => a.dayOfWeek === dayOfWeek && !a.date);
+                        }
                         
                         // Generate default time slots from 8 AM to 7 PM
                         timeSlots = Array.from({ length: 12 }, (_, i) => ({
