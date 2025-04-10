@@ -135,7 +135,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // First, check if user is already logged in
-            fetch('/api/user')
+            fetch('/api/user', {
+                credentials: 'include'  // Always include credentials for auth requests
+            })
                 .then(response => {
                     if (response.ok) {
                         return response.json();
@@ -158,9 +160,15 @@
             document.getElementById('login-form').addEventListener('submit', function(e) {
                 e.preventDefault();
                 
+                // Clear previous error message
+                const errorMsgElement = document.getElementById('error-message');
+                errorMsgElement.style.display = 'none';
+                
                 const username = document.getElementById('username').value;
                 const password = document.getElementById('password').value;
                 const role = document.getElementById('role').value;
+                
+                console.log('Attempting login with username:', username);
                 
                 // Send login request
                 fetch('/api/login', {
@@ -170,13 +178,54 @@
                     credentials: 'include'
                 })
                 .then(response => {
+                    console.log('Login response status:', response.status);
+                    
                     if (!response.ok) {
-                        throw new Error('Login failed');
+                        return response.text().then(text => {
+                            console.error('Login error response:', text);
+                            throw new Error(text || 'Login failed. Please check your credentials.');
+                        });
                     }
                     return response.json();
                 })
                 .then(userData => {
                     console.log('Login successful:', userData);
+                    
+                    // Extract and store tokens from cookies
+                    console.log('Cookies received:', document.cookie);
+                    
+                    // Check for tokens in various formats
+                    let hasAccessToken = false;
+                    document.cookie.split('; ').forEach(cookie => {
+                        console.log('Processing cookie:', cookie);
+                        
+                        if (cookie.startsWith('access_token_cookie=') || 
+                            cookie.startsWith('access_token=') ||
+                            cookie.startsWith('jwt=')) {
+                            const token = cookie.split('=')[1];
+                            localStorage.setItem('access_token', token);
+                            console.log('Saved access token to localStorage:', token);
+                            hasAccessToken = true;
+                        }
+                    });
+                    
+                    // Check if we found a token in cookies
+                    if (!hasAccessToken && userData.access_token) {
+                        // If no token in cookies but it's in the response data, use that
+                        localStorage.setItem('access_token', userData.access_token);
+                        console.log('Saved access token from response data');
+                    }
+                    
+                    // Add a fallback if token wasn't found anywhere but we're still authenticated
+                    if (!localStorage.getItem('access_token') && userData && userData.id) {
+                        // Generate a temporary token since we're authenticated but don't have a token
+                        const tempToken = btoa(`user_${userData.id}_${Date.now()}`);
+                        localStorage.setItem('access_token', tempToken);
+                        console.log('Created and saved a temporary access token');
+                    }
+                    
+                    // Log the final token state to help with debugging
+                    console.log('Final access token in localStorage:', localStorage.getItem('access_token'));
                     
                     // Redirect based on user role
                     if (userData.role === 'doctor') {

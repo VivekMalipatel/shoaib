@@ -1,23 +1,25 @@
+#!/usr/bin/env python
+
 """
-Database initialization script for Flask application.
-This script creates the database tables if they don't exist yet.
+Create/reset database script.
+Use this to initialize the database with tables that match our models.
 """
+
 from app import create_app, db
-from app.models import User, Appointment, Availability
-from werkzeug.security import generate_password_hash
-import json
-from datetime import datetime, timedelta
+import os
 
-app = create_app()
-
-def create_db():
+def create_database():
+    # Create a Flask app context
+    app = create_app()
+    
     with app.app_context():
-        # Create all tables
-        db.create_all()
-        print("Database tables created.")
+        print("Dropping all tables (if they exist)...")
+        db.drop_all()
         
-        # Use the existing database and don't seed it again
-        # The database is already populated by the Express backend
+        print("Creating all tables based on defined models...")
+        db.create_all()
+        
+        print("Database initialized successfully!")
 
 if __name__ == "__main__":
-    create_db()
+    create_database()

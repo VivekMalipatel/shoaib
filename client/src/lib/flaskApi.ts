@@ -3,8 +3,23 @@
  */
 
 // Base URL for the Flask API
-// Use the public URL from Replit with the correct port for Flask
-const FLASK_API_BASE_URL = window.location.protocol + '//' + window.location.hostname + ':5001/api';
+// This configuration works whether Flask is running locally or via host URL
+const FLASK_API_BASE_URL = 'http://127.0.0.1:5001/api';
+
+function getCsrfToken() {
+  const csrfCookie = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('csrf_access_token='));
+
+  if (!csrfCookie) {
+    console.warn('CSRF token not found in cookies. Ensure the server is setting the csrf_access_token cookie.');
+    return null;
+  }
+
+  const token = csrfCookie.split('=')[1];
+  console.log('Extracted CSRF Token:', token);
+  return token;
+}
 
 export async function apiRequestFlask<T>(
   method: string,
@@ -12,10 +27,18 @@ export async function apiRequestFlask<T>(
   data?: unknown | undefined,
 ): Promise<T> {
   const url = `${FLASK_API_BASE_URL}${endpoint}`;
-  
+  const csrfToken = getCsrfToken();
+  const accessToken = localStorage.getItem('access_token');
+
+  const headers: Record<string, string> = {
+    ...(data ? { 'Content-Type': 'application/json' } : {}),
+    ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+    ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+  };
+
   const response = await fetch(url, {
     method,
-    headers: data ? { 'Content-Type': 'application/json' } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: 'include',
   });

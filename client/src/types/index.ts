@@ -1,4 +1,6 @@
-import { User, Appointment, Availability } from "@shared/schema";
+import { User, Appointment, Availability } from "./schema";
+
+export type { User, Appointment, Availability };
 
 export interface AppointmentWithNames extends Appointment {
   doctorName?: string;

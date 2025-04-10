@@ -1,34 +1,36 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_wtf.csrf import CSRFProtect
 from config import Config
+import os
 
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
+csrf = CSRFProtect()
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='../../dist/public', static_url_path='')
     app.config.from_object(config_class)
     
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+    csrf.init_app(app)
     
-<<<<<<< HEAD
     # Enable CORS with credentials support
     CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
-=======
-    # Enable CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     
     # Register blueprints
     from app.routes import bp as api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # Configure CSRF to exempt certain routes
+    csrf.exempt(api_bp)  # We'll handle CSRF manually with JWT
     
     # Handle errors
     @app.errorhandler(404)
@@ -40,7 +42,6 @@ def create_app(config_class=Config):
         db.session.rollback()
         return {'error': 'Internal server error'}, 500
     
-<<<<<<< HEAD
     # Add a health check route
     @app.route('/health')
     def health_check():
@@ -62,8 +63,21 @@ def create_app(config_class=Config):
             
         return jsonify(user.to_dict())
     
-=======
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
+    # Add route to get CSRF token
+    @app.route('/api/csrf-token', methods=['GET'])
+    def get_csrf_token():
+        from flask import jsonify
+        return jsonify({'csrf_token': csrf._get_token()})
+    
+    # Serve the React app - catch all route
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve(path):
+        if path != "" and os.path.exists(app.static_folder + '/' + path):
+            return send_from_directory(app.static_folder, path)
+        else:
+            return send_from_directory(app.static_folder, 'index.html')
+    
     return app
 
 from app import models

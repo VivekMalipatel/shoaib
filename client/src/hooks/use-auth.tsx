@@ -4,7 +4,7 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { User as SelectUser, InsertUser } from "@shared/schema";
+import { User, UserType } from "../types/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,18 +13,18 @@ const defaultValue = {
   user: null,
   isLoading: false,
   error: null,
-  loginMutation: {} as UseMutationResult<SelectUser, Error, LoginData>,
+  loginMutation: {} as UseMutationResult<User, Error, LoginData>,
   logoutMutation: {} as UseMutationResult<void, Error, void>,
-  registerMutation: {} as UseMutationResult<SelectUser, Error, InsertUser>,
+  registerMutation: {} as UseMutationResult<User, Error, UserType>,
 };
 
 type AuthContextType = {
-  user: SelectUser | null;
+  user: User | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
+  loginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  registerMutation: UseMutationResult<User, Error, UserType>;
 };
 
 type LoginData = {
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
-  } = useQuery<SelectUser | null>({
+  } = useQuery<User | null>({
     queryKey: ["/api/user"],
     queryFn: async () => {
       try {
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: (user: User) => {
       console.log('Setting user data in query cache:', user);
       queryClient.setQueryData(["/api/user"], user);
       toast({
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Register mutation
   const registerMutation = useMutation({
-    mutationFn: async (userData: InsertUser) => {
+    mutationFn: async (userData: UserType) => {
       try {
         const { registerWithFlask } = await import('../lib/flaskApi');
         const user = await registerWithFlask(userData);
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Registration successful",

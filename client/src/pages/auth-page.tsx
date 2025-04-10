@@ -8,10 +8,10 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/hooks/use-auth';
-import { insertUserSchema } from '@shared/schema';
+import { userSchema } from '../types/schema';
 import { Redirect } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User, Lock, Mail, Phone, Award, CreditCard } from 'lucide-react';
 
 // Create a login schema for form validation
 const loginSchema = z.object({
@@ -21,8 +21,13 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Use the existing insertUserSchema for registration
-const registerSchema = insertUserSchema;
+// Fix the role type by explicitly defining it as a union of string literals
+const customUserSchema = userSchema.extend({
+  role: z.enum(['patient', 'doctor']), // Use z.enum for better type safety
+  confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+type RegisterFormValues = z.infer<typeof customUserSchema>;
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState('login');
@@ -38,16 +43,16 @@ export default function AuthPage() {
     },
   });
 
-  // Define registration form
-  const registerForm = useForm({
-    resolver: zodResolver(registerSchema),
+  // Define registration form with proper typing
+  const registerForm = useForm<RegisterFormValues>({
+    resolver: zodResolver(customUserSchema),
     defaultValues: {
       username: '',
       email: '',
       password: '',
       confirmPassword: '',
       fullName: '',
-      role: 'patient' as const,
+      role: 'patient', // This is now properly typed
       phone: '',
       specialization: '',
       licenseNumber: '',
@@ -88,35 +93,42 @@ export default function AuthPage() {
       {/* Left side: Form container */}
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-3xl font-bold text-center">
+          <Card className="border-0 shadow-xl overflow-hidden">
+            <CardHeader className="space-y-1 bg-gradient-to-r from-primary-50 to-blue-50 pb-6">
+              <CardTitle className="text-3xl font-bold text-center text-primary">
                 MediConnect
               </CardTitle>
-              <CardDescription className="text-center">
+              <CardDescription className="text-center text-gray-600">
                 Your healthcare management solution
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 pt-6">
               <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="login">Login</TabsTrigger>
-                  <TabsTrigger value="register">Register</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 mb-8">
+                  <TabsTrigger value="login" className="text-base">Login</TabsTrigger>
+                  <TabsTrigger value="register" className="text-base">Register</TabsTrigger>
                 </TabsList>
 
                 {/* Login Tab */}
                 <TabsContent value="login">
                   <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-5">
                       <FormField
                         control={loginForm.control}
                         name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Username</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter your username" {...field} />
-                            </FormControl>
+                            <FormLabel className="text-base">Username</FormLabel>
+                            <div className="relative">
+                              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter your username" 
+                                  className="pl-10 py-6 h-12" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -126,18 +138,30 @@ export default function AuthPage() {
                         name="password"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} />
-                            </FormControl>
+                            <FormLabel className="text-base">Password</FormLabel>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <FormControl>
+                                <Input 
+                                  type="password" 
+                                  placeholder="••••••••" 
+                                  className="pl-10 py-6 h-12" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                      <Button 
+                        type="submit" 
+                        className="w-full h-12 mt-6 text-base font-medium" 
+                        disabled={loginMutation.isPending}
+                      >
                         {loginMutation.isPending ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Please wait
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Please wait
                           </>
                         ) : (
                           'Login'
@@ -156,10 +180,17 @@ export default function AuthPage() {
                         name="fullName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Full Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="John Smith" {...field} />
-                            </FormControl>
+                            <FormLabel className="text-base">Full Name</FormLabel>
+                            <div className="relative">
+                              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <FormControl>
+                                <Input 
+                                  placeholder="John Smith" 
+                                  className="pl-10 py-6 h-12" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -169,10 +200,17 @@ export default function AuthPage() {
                         name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Username</FormLabel>
-                            <FormControl>
-                              <Input placeholder="johnsmith" {...field} />
-                            </FormControl>
+                            <FormLabel className="text-base">Username</FormLabel>
+                            <div className="relative">
+                              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <FormControl>
+                                <Input 
+                                  placeholder="johnsmith" 
+                                  className="pl-10 py-6 h-12" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -182,10 +220,18 @@ export default function AuthPage() {
                         name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="john@example.com" {...field} />
-                            </FormControl>
+                            <FormLabel className="text-base">Email</FormLabel>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <FormControl>
+                                <Input 
+                                  type="email" 
+                                  placeholder="john@example.com" 
+                                  className="pl-10 py-6 h-12" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -197,10 +243,18 @@ export default function AuthPage() {
                           name="password"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Password</FormLabel>
-                              <FormControl>
-                                <Input type="password" placeholder="••••••••" {...field} />
-                              </FormControl>
+                              <FormLabel className="text-base">Password</FormLabel>
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <FormControl>
+                                  <Input 
+                                    type="password" 
+                                    placeholder="••••••••" 
+                                    className="pl-10 py-6 h-12" 
+                                    {...field} 
+                                  />
+                                </FormControl>
+                              </div>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -210,10 +264,18 @@ export default function AuthPage() {
                           name="confirmPassword"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Confirm</FormLabel>
-                              <FormControl>
-                                <Input type="password" placeholder="••••••••" {...field} />
-                              </FormControl>
+                              <FormLabel className="text-base">Confirm</FormLabel>
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <FormControl>
+                                  <Input 
+                                    type="password" 
+                                    placeholder="••••••••" 
+                                    className="pl-10 py-6 h-12" 
+                                    {...field} 
+                                  />
+                                </FormControl>
+                              </div>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -225,9 +287,9 @@ export default function AuthPage() {
                         name="role"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>I am a</FormLabel>
+                            <FormLabel className="text-base">I am a</FormLabel>
                             <select
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                               {...field}
                             >
                               <option value="patient">Patient</option>
@@ -243,10 +305,17 @@ export default function AuthPage() {
                         name="phone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Phone (optional)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="+1 (555) 123-4567" {...field} />
-                            </FormControl>
+                            <FormLabel className="text-base">Phone (optional)</FormLabel>
+                            <div className="relative">
+                              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <FormControl>
+                                <Input 
+                                  placeholder="+1 (555) 123-4567" 
+                                  className="pl-10 py-6 h-12" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -259,10 +328,17 @@ export default function AuthPage() {
                             name="specialization"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Specialization</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Cardiology" {...field} />
-                                </FormControl>
+                                <FormLabel className="text-base">Specialization</FormLabel>
+                                <div className="relative">
+                                  <Award className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="Cardiology" 
+                                      className="pl-10 py-6 h-12" 
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                </div>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -272,10 +348,17 @@ export default function AuthPage() {
                             name="licenseNumber"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>License Number</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="MD12345" {...field} />
-                                </FormControl>
+                                <FormLabel className="text-base">License Number</FormLabel>
+                                <div className="relative">
+                                  <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="MD12345" 
+                                      className="pl-10 py-6 h-12" 
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                </div>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -283,10 +366,14 @@ export default function AuthPage() {
                         </>
                       )}
 
-                      <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                      <Button 
+                        type="submit" 
+                        className="w-full h-12 mt-6 text-base font-medium" 
+                        disabled={registerMutation.isPending}
+                      >
                         {registerMutation.isPending ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Please wait
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Please wait
                           </>
                         ) : (
                           'Register'
@@ -297,12 +384,12 @@ export default function AuthPage() {
                 </TabsContent>
               </Tabs>
             </CardContent>
-            <CardFooter className="flex justify-center border-t pt-4">
+            <CardFooter className="flex justify-center border-t pt-5 pb-5 px-6 bg-gray-50">
               <p className="text-sm text-muted-foreground">
                 {activeTab === 'login' ? "Don't have an account? " : "Already have an account? "}
                 <button
                   type="button"
-                  className="text-primary hover:underline"
+                  className="text-primary hover:underline font-medium"
                   onClick={() => setActiveTab(activeTab === 'login' ? 'register' : 'login')}
                 >
                   {activeTab === 'login' ? 'Sign up' : 'Log in'}

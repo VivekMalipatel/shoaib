@@ -20,8 +20,8 @@ MediConnect is a full-stack application for managing doctor-patient appointments
 
 - **Tech Stack**
   - Frontend: React, TypeScript, TailwindCSS, shadcn/ui
-  - Backend: Express.js, Drizzle ORM
-  - Database: PostgreSQL
+  - Backend: Flask, SQLAlchemy
+  - Database: SQLite (development), PostgreSQL (production)
 
 ## Screenshots
 
@@ -40,14 +40,12 @@ MediConnect is a full-stack application for managing doctor-patient appointments
 │   │   ├── lib/            # Utility functions
 │   │   ├── pages/          # Page components
 │   │   └── types/          # TypeScript type definitions
-├── server/                 # Backend Express application
-│   ├── auth.ts             # Authentication logic
-│   ├── routes.ts           # API routes
-│   ├── storage.ts          # Database operations
-│   └── index.ts            # Server entry point
-├── shared/                 # Shared code between frontend and backend
-│   └── schema.ts           # Database schema and types
-└── backend/                # Legacy Python Flask backend (optional)
+└── backend/                # Python Flask backend
+    ├── app/                # Flask application code
+    │   ├── models.py       # Database models
+    │   └── routes.py       # API routes
+    ├── migrations/         # Database migrations
+    └── run.py              # Server entry point
 ```
 
 ## Running Locally
@@ -55,7 +53,8 @@ MediConnect is a full-stack application for managing doctor-patient appointments
 ### Prerequisites
 
 - Node.js (v16+)
-- PostgreSQL database
+- Python 3.7+
+- SQLite or PostgreSQL database
 
 ### Setup
 
@@ -65,41 +64,47 @@ MediConnect is a full-stack application for managing doctor-patient appointments
    cd mediconnect
    ```
 
-2. **Install dependencies**
+2. **Install frontend dependencies**
    ```
    npm install
    ```
 
-3. **Set up environment variables**
-   
-   Create a `.env` file in the root directory with the following content:
+3. **Install backend dependencies**
    ```
-   DATABASE_URL=postgres://username:password@localhost:5432/mediconnect
-   SESSION_SECRET=your-secret-key
-   PORT=5000
+   cd backend
+   pip install -r requirements.txt
    ```
 
-4. **Initialize the database**
-   ```
-<<<<<<< HEAD
-   # Option 1: Using the setup script (recommended)
-   chmod +x setup-db.sh
-   ./setup-db.sh
+4. **Set up environment variables**
    
-   # Option 2: Using drizzle directly
-=======
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
-   npm run db:push
+   Create a `.env` file in the backend directory with the following content:
+   ```
+   DATABASE_URL=sqlite:///app.db
+   SECRET_KEY=your-secret-key
+   JWT_SECRET_KEY=your-jwt-secret-key
    ```
 
-5. **Start the development server**
+5. **Initialize the database**
    ```
+   python backend/create_db.py
+   ```
+
+6. **Start the development servers**
+   ```
+   # Option 1: Start both frontend and backend with a single command
+   ./start-both.sh
+   
+   # Option 2: Start them separately
+   # Terminal 1 - Start Flask backend
+   ./start-flask.sh
+   
+   # Terminal 2 - Start Vite frontend
    npm run dev
    ```
 
-6. **Access the application**
+7. **Access the application**
    
-   Open your browser and navigate to `http://localhost:5000`
+   Open your browser and navigate to `http://localhost:5173`
 
 ## Test Accounts
 
@@ -116,8 +121,8 @@ The application comes with pre-configured test accounts:
 ## API Documentation
 
 ### Authentication Endpoints
-- `POST /api/register` - Create a new user account
 - `POST /api/login` - Authenticate a user
+- `POST /api/register` - Create a new user account
 - `POST /api/logout` - Log out the current user
 - `GET /api/user` - Get the current authenticated user
 
@@ -127,15 +132,14 @@ The application comes with pre-configured test accounts:
 - `GET /api/doctors/:id/availability` - Get a doctor's availability
 
 ### Patient Endpoints
-- `GET /api/patients/:id/appointments` - Get a patient's appointments
+- `GET /api/appointments/patient` - Get a patient's appointments
 
 ### Appointment Endpoints
 - `POST /api/appointments` - Create a new appointment
-- `PATCH /api/appointments/:id` - Update an appointment
+- `PUT /api/appointments/:id` - Update an appointment
 
 ### Availability Endpoints
-- `POST /api/availability` - Create/update doctor availability
-- `PATCH /api/availability/:id` - Update availability
+- `POST /api/doctors/:id/availability` - Create/update doctor availability
 
 ## License
 

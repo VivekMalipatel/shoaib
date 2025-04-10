@@ -1,5 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Base URL for the Flask API - match the one in flaskApi.ts
+const API_BASE_URL = window.location.protocol + '//' + window.location.host + '/api';
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -12,7 +15,10 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Ensure the URL is properly formatted with the API base URL
+  const fullUrl = url.startsWith('/api') ? url : `${API_BASE_URL}${url.startsWith('/') ? url : '/' + url}`;
+  
+  const res = await fetch(fullUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -29,7 +35,14 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    // Handle both relative and absolute URLs
+    const url = typeof queryKey[0] === 'string' 
+      ? (queryKey[0].startsWith('/api') 
+          ? queryKey[0] 
+          : `${API_BASE_URL}${(queryKey[0] as string).startsWith('/') ? queryKey[0] : '/' + queryKey[0]}`)
+      : queryKey[0];
+      
+    const res = await fetch(url, {
       credentials: "include",
     });
 

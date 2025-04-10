@@ -1,11 +1,14 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from app import db
 from app.models import User, Appointment, Availability
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     jwt_required,
-    get_jwt_identity
+    get_jwt_identity,
+    set_access_cookies,
+    set_refresh_cookies,
+    unset_jwt_cookies
 )
 from datetime import datetime
 
@@ -16,11 +19,7 @@ def register():
     data = request.get_json() or {}
     
     # Check required fields
-<<<<<<< HEAD
     if not all(k in data for k in ('username', 'email', 'password', 'role', 'fullName')):
-=======
-    if not all(k in data for k in ('username', 'email', 'password', 'role')):
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
         return jsonify({'error': 'Missing required fields'}), 400
     
     # Check if username or email already exists
@@ -35,15 +34,10 @@ def register():
         username=data['username'],
         email=data['email'],
         role=data['role'],
-<<<<<<< HEAD
         full_name=data['fullName'],
         specialization=data.get('specialization', ''),
         license_number=data.get('licenseNumber', ''),
         phone=data.get('phone', '')
-=======
-        first_name=data.get('first_name', ''),
-        last_name=data.get('last_name', '')
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     )
     user.set_password(data['password'])
     
@@ -55,12 +49,18 @@ def register():
     refresh_token = create_refresh_token(identity=str(user.id))
     
     # Set session cookie
-    from flask import session
     session['user_id'] = user.id
     
+    # Create response with user data and tokens
+    user_data = user.to_dict()
+    response_data = {
+        **user_data,
+        'access_token': access_token,
+        'refresh_token': refresh_token
+    }
+    
     # Set JWT cookies
-    resp = jsonify(user.to_dict())
-    from flask_jwt_extended import set_access_cookies, set_refresh_cookies
+    resp = jsonify(response_data)
     set_access_cookies(resp, access_token)
     set_refresh_cookies(resp, refresh_token)
     
@@ -82,25 +82,23 @@ def login():
     access_token = create_access_token(identity=str(user.id))
     refresh_token = create_refresh_token(identity=str(user.id))
     
-<<<<<<< HEAD
     # Set session cookie
-    from flask import session
     session['user_id'] = user.id
     
+    # Create response with user data and tokens
+    user_data = user.to_dict()
+    response_data = {
+        **user_data,
+        'access_token': access_token,
+        'refresh_token': refresh_token
+    }
+    
     # Set JWT cookies
-    resp = jsonify(user.to_dict())
-    from flask_jwt_extended import set_access_cookies, set_refresh_cookies
+    resp = jsonify(response_data)
     set_access_cookies(resp, access_token)
     set_refresh_cookies(resp, refresh_token)
     
     return resp, 200
-=======
-    return jsonify({
-        'user': user.to_dict(),
-        'access_token': access_token,
-        'refresh_token': refresh_token
-    }), 200
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
 
 @bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
@@ -125,22 +123,14 @@ def get_user():
 
 @bp.route('/logout', methods=['POST'])
 def logout():
-<<<<<<< HEAD
     # Clear session
-    from flask import session
     session.clear()
     
     # Clear JWT cookies
     resp = jsonify({'message': 'Logout successful'})
-    from flask_jwt_extended import unset_jwt_cookies
     unset_jwt_cookies(resp)
     
     return resp, 200
-=======
-    # JWT is stateless so there's no server-side logout
-    # The frontend should remove the tokens
-    return jsonify({'message': 'Logout successful'}), 200
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
 
 @bp.route('/doctors', methods=['GET'])
 def get_doctors():
@@ -164,29 +154,30 @@ def add_doctor_availability(doctor_id):
     
     data = request.get_json() or {}
     
-    if not all(k in data for k in ('date', 'time_slots')):
+    if not all(k in data for k in ('dayOfWeek', 'startTime', 'endTime', 'isAvailable')):
         return jsonify({'error': 'Missing required fields'}), 400
     
-    # Convert date string to date object
-    try:
-        date = datetime.strptime(data['date'], '%Y-%m-%d').date()
-    except ValueError:
-        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-    
-    # Check if availability already exists for this date
-    existing = Availability.query.filter_by(doctor_id=doctor_id, date=date).first()
+    # Check if availability already exists for this day of week
+    existing = Availability.query.filter_by(
+        doctor_id=doctor_id, 
+        day_of_week=data['dayOfWeek']
+    ).first()
     
     if existing:
         # Update existing availability
-        existing.time_slots = data['time_slots']
+        existing.start_time = data['startTime']
+        existing.end_time = data['endTime']
+        existing.is_available = data['isAvailable']
         db.session.commit()
         return jsonify(existing.to_dict()), 200
     else:
         # Create new availability
         availability = Availability(
             doctor_id=doctor_id,
-            date=date,
-            time_slots=data['time_slots']
+            day_of_week=data['dayOfWeek'],
+            start_time=data['startTime'],
+            end_time=data['endTime'],
+            is_available=data['isAvailable']
         )
         db.session.add(availability)
         db.session.commit()
@@ -206,7 +197,6 @@ def create_appointment():
     
     data = request.get_json() or {}
     
-<<<<<<< HEAD
     if not all(k in data for k in ('doctorId', 'date', 'type')):
         return jsonify({'error': 'Missing required fields'}), 400
     
@@ -229,46 +219,6 @@ def create_appointment():
         duration=data.get('duration', 30),
         type=data['type'],
         status='scheduled',
-=======
-    if not all(k in data for k in ('doctor_id', 'date', 'time', 'appointment_type')):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    # Validate doctor exists
-    doctor = User.query.get(data['doctor_id'])
-    if not doctor or doctor.role != 'doctor':
-        return jsonify({'error': 'Doctor not found'}), 404
-    
-    # Convert date string to date object
-    try:
-        date = datetime.strptime(data['date'], '%Y-%m-%d').date()
-    except ValueError:
-        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-    
-    # Check if the time slot is available for this doctor
-    availability = Availability.query.filter_by(doctor_id=data['doctor_id'], date=date).first()
-    
-    if not availability or data['time'] not in availability.time_slots:
-        return jsonify({'error': 'Selected time slot is not available'}), 400
-    
-    # Check if the time slot is already booked
-    existing_appointment = Appointment.query.filter_by(
-        doctor_id=data['doctor_id'],
-        date=date,
-        time=data['time'],
-        status='scheduled'
-    ).first()
-    
-    if existing_appointment:
-        return jsonify({'error': 'This time slot is already booked'}), 400
-    
-    # Create new appointment
-    appointment = Appointment(
-        doctor_id=data['doctor_id'],
-        patient_id=patient.id,
-        date=date,
-        time=data['time'],
-        appointment_type=data['appointment_type'],
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
         notes=data.get('notes', '')
     )
     
@@ -293,11 +243,7 @@ def get_doctor_appointments():
     for appointment in appointments:
         data = appointment.to_dict()
         patient = User.query.get(appointment.patient_id)
-<<<<<<< HEAD
         data['patientName'] = patient.full_name if patient else "Unknown"
-=======
-        data['patient_name'] = f"{patient.first_name} {patient.last_name}" if patient else "Unknown"
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
         results.append(data)
     
     return jsonify(results), 200
@@ -318,11 +264,7 @@ def get_patient_appointments():
     for appointment in appointments:
         data = appointment.to_dict()
         doctor = User.query.get(appointment.doctor_id)
-<<<<<<< HEAD
         data['doctorName'] = doctor.full_name if doctor else "Unknown"
-=======
-        data['doctor_name'] = f"{doctor.first_name} {doctor.last_name}" if doctor else "Unknown"
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
         results.append(data)
     
     return jsonify(results), 200
@@ -358,7 +300,6 @@ def update_appointment(appointment_id):
     if appointment.status == 'scheduled':
         if 'date' in data:
             try:
-<<<<<<< HEAD
                 appointment.date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
             except ValueError:
                 return jsonify({'error': 'Invalid date format. Use ISO format'}), 400
@@ -368,17 +309,6 @@ def update_appointment(appointment_id):
         
         if 'type' in data:
             appointment.type = data['type']
-=======
-                appointment.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
-            except ValueError:
-                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-        
-        if 'time' in data:
-            appointment.time = data['time']
-        
-        if 'appointment_type' in data:
-            appointment.appointment_type = data['appointment_type']
->>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     
     db.session.commit()
     
