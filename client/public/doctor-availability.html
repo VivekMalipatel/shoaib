@@ -200,6 +200,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Variable to store the current user/doctor ID
+            let currentUserId = null;
+            let loadingMessage = null;
+
             // Check if user is authenticated as a doctor
             fetch('/api/user')
                 .then(response => {
@@ -213,6 +217,8 @@
                     if (user.role !== 'doctor') {
                         window.location.href = '/patient-dashboard.html';
                     }
+                    // Store user ID for API calls
+                    currentUserId = user.id;
                 })
                 .catch(error => {
                     console.error('Authentication error:', error);
@@ -279,26 +285,107 @@
 
             // Save availability button
             document.getElementById('save-availability').addEventListener('click', function() {
-                if (!selectedDate) return;
-
-                const formattedDate = formatDate(selectedDate);
+                if (!selectedDate || !currentUserId) return;
                 
-                // In a real application, this would send the data to the server
-                // For now, we'll just log it to the console
-                console.log('Saving availability for', formattedDate, timeSlots);
+                // Get the day of week (0-6, where 0 is Sunday)
+                const dayOfWeek = selectedDate.getDay();
                 
-                alert('Availability saved successfully!');
+                // Find the earliest and latest available time slots
+                let startHour = 24;
+                let endHour = 0;
+                let anySlotAvailable = false;
                 
-                // Here you would send a request to your API to save the availability
-                // For example:
-                // fetch('/api/availability', {
-                //     method: 'POST',
-                //     headers: { 'Content-Type': 'application/json' },
-                //     body: JSON.stringify({ date: formattedDate, slots: timeSlots })
-                // })
-                // .then(response => response.json())
-                // .then(data => console.log('Success:', data))
-                // .catch(error => console.error('Error:', error));
+                timeSlots.forEach(slot => {
+                    if (slot.isAvailable) {
+                        anySlotAvailable = true;
+                        const hour = parseInt(slot.time.split(':')[0]);
+                        startHour = Math.min(startHour, hour);
+                        endHour = Math.max(endHour, hour + 1); // +1 because end time is exclusive
+                    }
+                });
+                
+                // If no slots are available, use default range but mark as unavailable
+                if (!anySlotAvailable) {
+                    startHour = 9;
+                    endHour = 17;
+                }
+                
+                // Create availability data object
+                const availabilityData = {
+                    dayOfWeek: dayOfWeek,
+                    startTime: `${startHour.toString().padStart(2, '0')}:00`,
+                    endTime: `${endHour.toString().padStart(2, '0')}:00`,
+                    isAvailable: anySlotAvailable
+                };
+                
+                // Show saving state
+                const saveButton = document.getElementById('save-availability');
+                const originalText = saveButton.textContent;
+                saveButton.textContent = 'Saving...';
+                saveButton.disabled = true;
+                
+                // Send data to the server
+                fetch(`/api/doctors/${currentUserId}/availability`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Include auth token if you're using JWT in cookies
+                        // 'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    },
+                    body: JSON.stringify(availabilityData),
+                    credentials: 'include' // Include credentials for session cookies
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to save availability');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Show success message
+                    const feedback = document.createElement('div');
+                    feedback.style.backgroundColor = '#ecfdf5';
+                    feedback.style.color = '#065f46';
+                    feedback.style.padding = '0.5rem';
+                    feedback.style.borderRadius = '4px';
+                    feedback.style.marginTop = '1rem';
+                    feedback.textContent = 'Availability saved successfully!';
+                    
+                    // Insert the feedback message after the save button
+                    saveButton.parentNode.appendChild(feedback);
+                    
+                    // Remove the message after 3 seconds
+                    setTimeout(() => {
+                        feedback.remove();
+                    }, 3000);
+                    
+                    console.log('Availability saved:', data);
+                })
+                .catch(error => {
+                    console.error('Error saving availability:', error);
+                    
+                    // Show error message
+                    const feedback = document.createElement('div');
+                    feedback.style.backgroundColor = '#fee2e2';
+                    feedback.style.color = '#b91c1c';
+                    feedback.style.padding = '0.5rem';
+                    feedback.style.borderRadius = '4px';
+                    feedback.style.marginTop = '1rem';
+                    feedback.textContent = 'Failed to save availability. Please try again.';
+                    
+                    // Insert the feedback message after the save button
+                    saveButton.parentNode.appendChild(feedback);
+                    
+                    // Remove the message after 3 seconds
+                    setTimeout(() => {
+                        feedback.remove();
+                    }, 3000);
+                })
+                .finally(() => {
+                    // Reset button state
+                    saveButton.textContent = originalText;
+                    saveButton.disabled = false;
+                });
             });
 
             // Helper function to update the calendar
@@ -367,12 +454,54 @@
 
             // Load time slots for the selected date
             function loadTimeSlots() {
-                if (!selectedDate) return;
+                if (!selectedDate || !currentUserId) return;
                 
-                // In a real application, you would fetch the time slots from the server
-                // For now, just use the default time slots
-                timeSlots = [...defaultTimeSlots];
-                renderTimeSlots();
+                // Get day of week (0-6, where 0 is Sunday)
+                const dayOfWeek = selectedDate.getDay();
+                
+                // Show loading state
+                const slotList = document.getElementById('slot-list');
+                slotList.innerHTML = '<p>Loading time slots...</p>';
+                
+                // Fetch availability from the server based on day of week
+                fetch(`/api/doctors/${currentUserId}/availability`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to load availability');
+                        }
+                        return response.json();
+                    })
+                    .then(availabilities => {
+                        // Find availability for the selected day of week
+                        const dayAvailability = availabilities.find(a => a.dayOfWeek === dayOfWeek);
+                        
+                        // Generate default time slots from 8 AM to 7 PM
+                        timeSlots = Array.from({ length: 12 }, (_, i) => ({
+                            time: `${i + 8}:00`,
+                            isAvailable: false
+                        }));
+                        
+                        // If we have availability data for this day, update slots
+                        if (dayAvailability) {
+                            const startHour = parseInt(dayAvailability.startTime.split(':')[0]);
+                            const endHour = parseInt(dayAvailability.endTime.split(':')[0]);
+                            const isAvailable = dayAvailability.isAvailable;
+                            
+                            // Mark slots as available based on the time range
+                            timeSlots.forEach((slot, index) => {
+                                const hour = parseInt(slot.time.split(':')[0]);
+                                if (hour >= startHour && hour < endHour && isAvailable) {
+                                    slot.isAvailable = true;
+                                }
+                            });
+                        }
+                        
+                        renderTimeSlots();
+                    })
+                    .catch(error => {
+                        console.error('Error loading availability:', error);
+                        slotList.innerHTML = '<p>Failed to load time slots. Please try again.</p>';
+                    });
             }
 
             // Render time slots in the UI
