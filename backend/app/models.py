@@ -1,5 +1,5 @@
-from app import db
 from datetime import datetime
+from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
@@ -14,14 +14,14 @@ class User(db.Model):
     last_name = db.Column(db.String(64))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
+    # Define relationships
     doctor_appointments = db.relationship('Appointment', foreign_keys='Appointment.doctor_id', backref='doctor', lazy='dynamic')
     patient_appointments = db.relationship('Appointment', foreign_keys='Appointment.patient_id', backref='patient', lazy='dynamic')
     availabilities = db.relationship('Availability', backref='doctor', lazy='dynamic')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-        
+    
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
     
@@ -57,8 +57,7 @@ class Appointment(db.Model):
             'time': self.time,
             'status': self.status,
             'appointment_type': self.appointment_type,
-            'notes': self.notes,
-            'created_at': self.created_at.isoformat()
+            'notes': self.notes
         }
 
 class Availability(db.Model):
@@ -75,6 +74,5 @@ class Availability(db.Model):
             'id': self.id,
             'doctor_id': self.doctor_id,
             'date': self.date.isoformat(),
-            'time_slots': self.time_slots,
-            'created_at': self.created_at.isoformat()
+            'time_slots': self.time_slots
         }

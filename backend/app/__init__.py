@@ -12,15 +12,29 @@ jwt = JWTManager()
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
-
+    
+    # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
-    CORS(app)
     jwt.init_app(app)
-
-    from app.routes import bp as main_bp
-    app.register_blueprint(main_bp)
-
+    
+    # Enable CORS
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    
+    # Register blueprints
+    from app.routes import bp as api_bp
+    app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # Handle errors
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return {'error': 'Not found'}, 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        db.session.rollback()
+        return {'error': 'Internal server error'}, 500
+    
     return app
 
 from app import models

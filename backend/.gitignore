@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -16,15 +15,17 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Flask
 instance/
 .webassets-cache
 
-# Environments
+# Environment
 .env
 .venv
 env/
@@ -34,15 +35,23 @@ env.bak/
 venv.bak/
 
 # Database
-migrations/
 *.db
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
+*.sqlite
 
 # Logs
 logs/
 *.log
+
+# VSCode
+.vscode/
+
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
