@@ -81,6 +81,11 @@ MediConnect is a full-stack application for managing doctor-patient appointments
 
 4. **Initialize the database**
    ```
+   # Option 1: Using the setup script (recommended)
+   chmod +x setup-db.sh
+   ./setup-db.sh
+   
+   # Option 2: Using drizzle directly
    npm run db:push
    ```
 
