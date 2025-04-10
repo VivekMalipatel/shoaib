@@ -4,7 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { User, Calendar, Clock, Stethoscope, Search, LogOut } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  User, 
+  Calendar, 
+  Clock, 
+  Stethoscope, 
+  Search, 
+  LogOut, 
+  ChevronDown,
+  XCircle 
+} from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -177,6 +192,59 @@ export default function PatientDashboard() {
   const getDoctorName = (doctorId: number) => {
     const doctor = doctors.find(d => d.id === doctorId);
     return doctor ? doctor.fullName : `Doctor #${doctorId}`;
+  };
+
+  // Update appointment mutation 
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async (data: { appointmentId: number; status: string }) => {
+      try {
+        // First try with Flask
+        try {
+          const { updateAppointment } = await import('../lib/flaskApi');
+          const result = await updateAppointment(data.appointmentId, { status: data.status });
+          console.log('Updated appointment with Flask', result);
+          return result;
+        } catch (flaskError) {
+          console.warn('Failed to update appointment with Flask', flaskError);
+          
+          // Fall back to Express
+          const res = await apiRequest('PUT', `/api/appointments/${data.appointmentId}`, { status: data.status });
+          const result = await res.json();
+          console.log('Updated appointment with Express', result);
+          return result;
+        }
+      } catch (error) {
+        console.error('Error updating appointment:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/patients', user?.id, 'appointments'] });
+      toast({
+        title: 'Appointment updated',
+        description: 'The appointment status has been updated successfully.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Handle appointment status update
+  const handleUpdateAppointment = (appointmentId: number, status: string) => {
+    updateAppointmentMutation.mutate({ appointmentId, status });
+  };
+
+  // Handle reschedule appointment (stub for future implementation)
+  const handleRescheduleAppointment = (appointmentId: number) => {
+    toast({
+      title: 'Reschedule',
+      description: 'Reschedule functionality will be implemented soon.',
+    });
   };
 
   // Handle logout
