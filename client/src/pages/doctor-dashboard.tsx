@@ -41,21 +41,10 @@ export default function DoctorDashboard() {
       if (!user?.id) return [];
       
       try {
-        // First try with Flask
-        try {
-          const { getDoctorAppointments } = await import('../lib/flaskApi');
-          const data = await getDoctorAppointments();
-          console.log('Fetched appointments from Flask', data);
-          return data as Appointment[];
-        } catch (flaskError) {
-          console.warn('Failed to fetch appointments from Flask', flaskError);
-          
-          // Fall back to Express
-          const res = await apiRequest('GET', `/api/doctors/${user.id}/appointments`);
-          const data = await res.json();
-          console.log('Fetched appointments from Express', data);
-          return data as Appointment[];
-        }
+        const { getDoctorAppointments } = await import('../lib/flaskApi');
+        const data = await getDoctorAppointments();
+        console.log('Fetched appointments from Flask', data);
+        return data as Appointment[];
       } catch (error) {
         console.error('Error fetching appointments:', error);
         throw error;
@@ -71,21 +60,10 @@ export default function DoctorDashboard() {
       if (!user?.id) return [];
       
       try {
-        // First try with Flask
-        try {
-          const { getDoctorAvailability } = await import('../lib/flaskApi');
-          const data = await getDoctorAvailability(user.id);
-          console.log('Fetched availability from Flask', data);
-          return data as Availability[];
-        } catch (flaskError) {
-          console.warn('Failed to fetch availability from Flask', flaskError);
-          
-          // Fall back to Express
-          const res = await apiRequest('GET', `/api/doctors/${user.id}/availability`);
-          const data = await res.json();
-          console.log('Fetched availability from Express', data);
-          return data as Availability[];
-        }
+        const { getDoctorAvailability } = await import('../lib/flaskApi');
+        const data = await getDoctorAvailability(user.id);
+        console.log('Fetched availability from Flask', data);
+        return data as Availability[];
       } catch (error) {
         console.error('Error fetching availability:', error);
         throw error;
@@ -98,21 +76,10 @@ export default function DoctorDashboard() {
   const saveAvailabilityMutation = useMutation({
     mutationFn: async (data: { doctorId: number; dayOfWeek: number; startTime: string; endTime: string; isAvailable: boolean }) => {
       try {
-        // First try with Flask
-        try {
-          const { setDoctorAvailability } = await import('../lib/flaskApi');
-          const result = await setDoctorAvailability(data.doctorId, data);
-          console.log('Saved availability with Flask', result);
-          return result;
-        } catch (flaskError) {
-          console.warn('Failed to save availability with Flask', flaskError);
-          
-          // Fall back to Express
-          const res = await apiRequest('POST', '/api/availability', data);
-          const result = await res.json();
-          console.log('Saved availability with Express', result);
-          return result;
-        }
+        const { setDoctorAvailability } = await import('../lib/flaskApi');
+        const result = await setDoctorAvailability(data.doctorId, data);
+        console.log('Saved availability with Flask', result);
+        return result;
       } catch (error) {
         console.error('Error saving availability:', error);
         throw error;
@@ -203,21 +170,10 @@ export default function DoctorDashboard() {
   const updateAppointmentMutation = useMutation({
     mutationFn: async (data: { appointmentId: number; status: string }) => {
       try {
-        // First try with Flask
-        try {
-          const { updateAppointment } = await import('../lib/flaskApi');
-          const result = await updateAppointment(data.appointmentId, { status: data.status });
-          console.log('Updated appointment with Flask', result);
-          return result;
-        } catch (flaskError) {
-          console.warn('Failed to update appointment with Flask', flaskError);
-          
-          // Fall back to Express
-          const res = await apiRequest('PUT', `/api/appointments/${data.appointmentId}`, { status: data.status });
-          const result = await res.json();
-          console.log('Updated appointment with Express', result);
-          return result;
-        }
+        const { updateAppointment } = await import('../lib/flaskApi');
+        const result = await updateAppointment(data.appointmentId, { status: data.status });
+        console.log('Updated appointment with Flask', result);
+        return result;
       } catch (error) {
         console.error('Error updating appointment:', error);
         throw error;
