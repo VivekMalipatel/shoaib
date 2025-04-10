@@ -4,6 +4,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+<<<<<<< HEAD
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -21,6 +22,9 @@ import {
   MoreVertical,
   XCircle
 } from 'lucide-react';
+=======
+import { CheckCircle, Clock, Calendar as CalendarIcon, User, AlertTriangle, LogOut } from 'lucide-react';
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -39,6 +43,7 @@ export default function DoctorDashboard() {
     queryKey: ['/api/doctors', user?.id, 'appointments'],
     queryFn: async () => {
       if (!user?.id) return [];
+<<<<<<< HEAD
       
       try {
         const { getDoctorAppointments } = await import('../lib/flaskApi');
@@ -49,6 +54,11 @@ export default function DoctorDashboard() {
         console.error('Error fetching appointments:', error);
         throw error;
       }
+=======
+      const res = await apiRequest('GET', `/api/doctors/${user.id}/appointments`);
+      const data = await res.json();
+      return data as Appointment[];
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     },
     enabled: !!user?.id,
   });
@@ -58,6 +68,7 @@ export default function DoctorDashboard() {
     queryKey: ['/api/doctors', user?.id, 'availability'],
     queryFn: async () => {
       if (!user?.id) return [];
+<<<<<<< HEAD
       
       try {
         const { getDoctorAvailability } = await import('../lib/flaskApi');
@@ -68,6 +79,11 @@ export default function DoctorDashboard() {
         console.error('Error fetching availability:', error);
         throw error;
       }
+=======
+      const res = await apiRequest('GET', `/api/doctors/${user.id}/availability`);
+      const data = await res.json();
+      return data as Availability[];
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     },
     enabled: !!user?.id,
   });
@@ -75,6 +91,7 @@ export default function DoctorDashboard() {
   // Add/update availability
   const saveAvailabilityMutation = useMutation({
     mutationFn: async (data: { doctorId: number; dayOfWeek: number; startTime: string; endTime: string; isAvailable: boolean }) => {
+<<<<<<< HEAD
       try {
         const { setDoctorAvailability } = await import('../lib/flaskApi');
         const result = await setDoctorAvailability(data.doctorId, data);
@@ -84,6 +101,10 @@ export default function DoctorDashboard() {
         console.error('Error saving availability:', error);
         throw error;
       }
+=======
+      const res = await apiRequest('POST', '/api/availability', data);
+      return res.json();
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/doctors', user?.id, 'availability'] });
@@ -166,6 +187,7 @@ export default function DoctorDashboard() {
     setAvailableSlots(newSlots);
   };
 
+<<<<<<< HEAD
   // Update appointment status mutation
   const updateAppointmentMutation = useMutation({
     mutationFn: async (data: { appointmentId: number; status: string }) => {
@@ -200,6 +222,8 @@ export default function DoctorDashboard() {
     updateAppointmentMutation.mutate({ appointmentId, status });
   };
 
+=======
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
   // Handle logout
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -324,7 +348,11 @@ export default function DoctorDashboard() {
                           </div>
                         </div>
                       </div>
+<<<<<<< HEAD
                       <div className="flex items-center space-x-2">
+=======
+                      <div>
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
                         <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
                           appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
                           appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
@@ -332,6 +360,7 @@ export default function DoctorDashboard() {
                         }`}>
                           {appointment.status}
                         </span>
+<<<<<<< HEAD
                         
                         {appointment.status === 'scheduled' && (
                           <DropdownMenu>
@@ -352,6 +381,8 @@ export default function DoctorDashboard() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
+=======
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
                       </div>
                     </div>
                   ))

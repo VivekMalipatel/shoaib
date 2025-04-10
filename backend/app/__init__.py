@@ -18,8 +18,13 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     jwt.init_app(app)
     
+<<<<<<< HEAD
     # Enable CORS with credentials support
     CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+=======
+    # Enable CORS
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     
     # Register blueprints
     from app.routes import bp as api_bp
@@ -35,6 +40,7 @@ def create_app(config_class=Config):
         db.session.rollback()
         return {'error': 'Internal server error'}, 500
     
+<<<<<<< HEAD
     # Add a health check route
     @app.route('/health')
     def health_check():
@@ -56,6 +62,8 @@ def create_app(config_class=Config):
             
         return jsonify(user.to_dict())
     
+=======
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     return app
 
 from app import models

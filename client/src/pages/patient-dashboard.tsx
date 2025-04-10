@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+<<<<<<< HEAD
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -20,6 +21,9 @@ import {
   ChevronDown,
   XCircle 
 } from 'lucide-react';
+=======
+import { User, Calendar, Clock, Stethoscope, Search, LogOut } from 'lucide-react';
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -53,6 +57,7 @@ export default function PatientDashboard() {
     queryKey: ['/api/patients', user?.id, 'appointments'],
     queryFn: async () => {
       if (!user?.id) return [];
+<<<<<<< HEAD
       
       try {
         const { getPatientAppointments } = await import('../lib/flaskApi');
@@ -63,6 +68,11 @@ export default function PatientDashboard() {
         console.error('Error fetching patient appointments:', error);
         throw error;
       }
+=======
+      const res = await apiRequest('GET', `/api/patients/${user.id}/appointments`);
+      const data = await res.json();
+      return data as Appointment[];
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     },
     enabled: !!user?.id,
   });
@@ -71,6 +81,7 @@ export default function PatientDashboard() {
   const { data: doctors = [], isLoading: doctorsLoading } = useQuery({
     queryKey: ['/api/doctors'],
     queryFn: async () => {
+<<<<<<< HEAD
       try {
         const { getDoctors } = await import('../lib/flaskApi');
         const data = await getDoctors();
@@ -80,6 +91,11 @@ export default function PatientDashboard() {
         console.error('Error fetching doctors:', error);
         throw error;
       }
+=======
+      const res = await apiRequest('GET', '/api/doctors');
+      const data = await res.json();
+      return data as UserType[];
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     },
   });
 
@@ -92,6 +108,7 @@ export default function PatientDashboard() {
       type: string;
       notes?: string;
     }) => {
+<<<<<<< HEAD
       try {
         const { createAppointment } = await import('../lib/flaskApi');
         const result = await createAppointment(data);
@@ -101,6 +118,10 @@ export default function PatientDashboard() {
         console.error('Error creating appointment:', error);
         throw error;
       }
+=======
+      const res = await apiRequest('POST', '/api/appointments', data);
+      return res.json();
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/patients', user?.id, 'appointments'] });
@@ -154,6 +175,7 @@ export default function PatientDashboard() {
 
   const getPastAppointments = () => {
     return appointments.filter(app => app.status === 'completed' || app.status === 'cancelled');
+<<<<<<< HEAD
   };
 
   const getDoctorName = (doctorId: number) => {
@@ -203,6 +225,15 @@ export default function PatientDashboard() {
     });
   };
 
+=======
+  };
+
+  const getDoctorName = (doctorId: number) => {
+    const doctor = doctors.find(d => d.id === doctorId);
+    return doctor ? doctor.fullName : `Doctor #${doctorId}`;
+  };
+
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
   // Handle logout
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -463,6 +494,7 @@ export default function PatientDashboard() {
                           </div>
                         </div>
                       </div>
+<<<<<<< HEAD
                       <div className="flex items-center space-x-2">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -481,6 +513,12 @@ export default function PatientDashboard() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+=======
+                      <div>
+                        <Button variant="outline" size="sm">
+                          Reschedule
+                        </Button>
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
                       </div>
                     </div>
                   ))

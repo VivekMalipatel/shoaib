@@ -22,7 +22,11 @@ class User(db.Model):
     availabilities = db.relationship('Availability', backref='doctor', lazy='dynamic')
     
     def set_password(self, password):
+<<<<<<< HEAD
         self.password = generate_password_hash(password)
+=======
+        self.password_hash = generate_password_hash(password)
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
     
     def check_password(self, password):
         return check_password_hash(self.password, password)
@@ -61,6 +65,10 @@ class Appointment(db.Model):
             'duration': self.duration,
             'type': self.type,
             'status': self.status,
+<<<<<<< HEAD
+=======
+            'appointment_type': self.appointment_type,
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
             'notes': self.notes
         }
 
@@ -77,9 +85,15 @@ class Availability(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
+<<<<<<< HEAD
             'doctorId': self.doctor_id,
             'dayOfWeek': self.day_of_week,
             'startTime': self.start_time,
             'endTime': self.end_time,
             'isAvailable': self.is_available
+=======
+            'doctor_id': self.doctor_id,
+            'date': self.date.isoformat(),
+            'time_slots': self.time_slots
+>>>>>>> 4ebda91af98a70c687679e59ca0d831b3d78bc79
         }
