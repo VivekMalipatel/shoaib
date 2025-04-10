@@ -134,9 +134,33 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // First, check if user is already logged in
+            // Check for logout parameter in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const loggedOut = urlParams.get('logout');
+            
+            // Clear any tokens that might be in localStorage
+            if (loggedOut === 'true') {
+                console.log('User logged out, clearing local storage tokens');
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                // Remove the parameter from URL without refreshing the page
+                window.history.replaceState({}, document.title, '/auth.html');
+            }
+            
+            // Check if there's a token in localStorage first
+            const savedToken = localStorage.getItem('access_token');
+            
+            if (!savedToken) {
+                console.log('No token found, user needs to log in');
+                return; // Skip the auth check if no token exists
+            }
+            
+            // Check if user is already logged in
             fetch('/api/user', {
-                credentials: 'include'  // Always include credentials for auth requests
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${savedToken}`
+                }
             })
                 .then(response => {
                     if (response.ok) {
@@ -154,6 +178,9 @@
                 })
                 .catch(error => {
                     console.log('User not authenticated, showing login form');
+                    // Clear tokens if they're invalid
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
                 });
             
             // Handle form submission
