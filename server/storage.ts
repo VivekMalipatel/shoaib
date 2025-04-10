@@ -1,8 +1,12 @@
 import { users, appointments, availability, type User, type InsertUser, type Appointment, type InsertAppointment, type Availability, type InsertAvailability } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { db, pool } from "./db";
+import { desc, eq, and, sql } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -20,6 +24,9 @@ export interface IStorage {
   sessionStore: any; // Use any for SessionStore type to avoid compatibility issues
 }
 
+/**
+ * In-memory storage implementation for testing and development
+ */
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private appointments: Map<number, Appointment>;
@@ -78,6 +85,8 @@ export class MemStorage implements IStorage {
     this.users.set(patient.id, patient);
   }
 
+  // ... rest of the memory implementation
+  // (Keeping implementation but not using it)
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -98,7 +107,6 @@ export class MemStorage implements IStorage {
     const id = this.currentUserId++;
     const now = new Date();
     
-    // Create user with proper types for nullable fields
     const user: User = { 
       id,
       username: insertUser.username,
@@ -138,15 +146,14 @@ export class MemStorage implements IStorage {
     const id = this.currentAppointmentId++;
     const now = new Date();
     
-    // Create appointment with proper types for all fields
     const appointment: Appointment = { 
       id,
       patientId: insertAppointment.patientId, 
       doctorId: insertAppointment.doctorId,
       date: insertAppointment.date,
-      duration: insertAppointment.duration || 30, // Default 30 minutes
+      duration: insertAppointment.duration || 30,
       type: insertAppointment.type,
-      status: insertAppointment.status || "scheduled", // Default status
+      status: insertAppointment.status || "scheduled",
       notes: insertAppointment.notes || null,
       createdAt: now,
     };
@@ -173,7 +180,6 @@ export class MemStorage implements IStorage {
   async createAvailability(insertAvailability: InsertAvailability): Promise<Availability> {
     const id = this.currentAvailabilityId++;
     
-    // Create availability with proper types for all fields
     const availability: Availability = { 
       id,
       doctorId: insertAvailability.doctorId,
@@ -197,4 +203,141 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+/**
+ * Database storage implementation using PostgreSQL and Drizzle ORM
+ */
+export class DatabaseStorage implements IStorage {
+  sessionStore: any;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
+    });
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result.length > 0 ? result[0] : undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.email, email));
+    return result.length > 0 ? result[0] : undefined;
+  }
+
+  async createUser(insertUser: Omit<InsertUser, "confirmPassword">): Promise<User> {
+    const result = await db.insert(users).values({
+      username: insertUser.username,
+      password: insertUser.password,
+      email: insertUser.email,
+      fullName: insertUser.fullName,
+      role: insertUser.role,
+      specialization: insertUser.specialization,
+      licenseNumber: insertUser.licenseNumber,
+      phone: insertUser.phone,
+    }).returning();
+    
+    return result[0];
+  }
+
+  async getDoctors(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, 'doctor'));
+  }
+
+  async getAppointmentsByDoctor(doctorId: number): Promise<Appointment[]> {
+    return await db.select()
+      .from(appointments)
+      .where(eq(appointments.doctorId, doctorId))
+      .orderBy(desc(appointments.date));
+  }
+
+  async getAppointmentsByPatient(patientId: number): Promise<Appointment[]> {
+    return await db.select()
+      .from(appointments)
+      .where(eq(appointments.patientId, patientId))
+      .orderBy(desc(appointments.date));
+  }
+
+  async createAppointment(insertAppointment: InsertAppointment): Promise<Appointment> {
+    const result = await db.insert(appointments).values({
+      patientId: insertAppointment.patientId,
+      doctorId: insertAppointment.doctorId,
+      date: insertAppointment.date,
+      duration: insertAppointment.duration || 30,
+      type: insertAppointment.type,
+      status: insertAppointment.status || "scheduled",
+      notes: insertAppointment.notes
+    }).returning();
+    
+    return result[0];
+  }
+
+  async updateAppointment(id: number, data: Partial<Appointment>): Promise<Appointment | undefined> {
+    const result = await db.update(appointments)
+      .set(data)
+      .where(eq(appointments.id, id))
+      .returning();
+    
+    return result.length > 0 ? result[0] : undefined;
+  }
+
+  async getAvailabilityByDoctor(doctorId: number): Promise<Availability[]> {
+    return await db.select()
+      .from(availability)
+      .where(eq(availability.doctorId, doctorId))
+      .orderBy(availability.dayOfWeek, availability.startTime);
+  }
+
+  async createAvailability(insertAvailability: InsertAvailability): Promise<Availability> {
+    // Check if there's already availability for this doctor on this day
+    const existingAvailability = await db.select()
+      .from(availability)
+      .where(
+        and(
+          eq(availability.doctorId, insertAvailability.doctorId),
+          eq(availability.dayOfWeek, insertAvailability.dayOfWeek),
+          eq(availability.startTime, insertAvailability.startTime),
+          eq(availability.endTime, insertAvailability.endTime)
+        )
+      );
+    
+    if (existingAvailability.length > 0) {
+      // Update the existing availability
+      const updated = await this.updateAvailability(
+        existingAvailability[0].id, 
+        { isAvailable: insertAvailability.isAvailable }
+      );
+      
+      if (updated) return updated;
+    }
+    
+    // Create new availability
+    const result = await db.insert(availability).values({
+      doctorId: insertAvailability.doctorId,
+      dayOfWeek: insertAvailability.dayOfWeek,
+      startTime: insertAvailability.startTime,
+      endTime: insertAvailability.endTime,
+      isAvailable: insertAvailability.isAvailable !== undefined ? insertAvailability.isAvailable : true
+    }).returning();
+    
+    return result[0];
+  }
+
+  async updateAvailability(id: number, data: Partial<Availability>): Promise<Availability | undefined> {
+    const result = await db.update(availability)
+      .set(data)
+      .where(eq(availability.id, id))
+      .returning();
+    
+    return result.length > 0 ? result[0] : undefined;
+  }
+}
+
+// Use the database storage implementation
+export const storage = new DatabaseStorage();
