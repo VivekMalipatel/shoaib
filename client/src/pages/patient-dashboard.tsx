@@ -439,10 +439,24 @@ export default function PatientDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div>
-                        <Button variant="outline" size="sm">
-                          Reschedule
-                        </Button>
+                      <div className="flex items-center space-x-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              Actions <ChevronDown className="ml-2 h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleRescheduleAppointment(appointment.id)}>
+                              <Calendar className="mr-2 h-4 w-4 text-blue-500" />
+                              <span>Reschedule</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleUpdateAppointment(appointment.id, 'cancelled')}>
+                              <XCircle className="mr-2 h-4 w-4 text-red-500" />
+                              <span>Cancel Appointment</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   ))

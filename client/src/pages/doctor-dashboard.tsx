@@ -4,7 +4,23 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { CheckCircle, Clock, Calendar as CalendarIcon, User, AlertTriangle, LogOut } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  CheckCircle, 
+  CheckCircle2,
+  Clock, 
+  Calendar as CalendarIcon, 
+  User, 
+  AlertTriangle, 
+  LogOut,
+  MoreVertical,
+  XCircle
+} from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -183,6 +199,51 @@ export default function DoctorDashboard() {
     setAvailableSlots(newSlots);
   };
 
+  // Update appointment status mutation
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async (data: { appointmentId: number; status: string }) => {
+      try {
+        // First try with Flask
+        try {
+          const { updateAppointment } = await import('../lib/flaskApi');
+          const result = await updateAppointment(data.appointmentId, { status: data.status });
+          console.log('Updated appointment with Flask', result);
+          return result;
+        } catch (flaskError) {
+          console.warn('Failed to update appointment with Flask', flaskError);
+          
+          // Fall back to Express
+          const res = await apiRequest('PUT', `/api/appointments/${data.appointmentId}`, { status: data.status });
+          const result = await res.json();
+          console.log('Updated appointment with Express', result);
+          return result;
+        }
+      } catch (error) {
+        console.error('Error updating appointment:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/doctors', user?.id, 'appointments'] });
+      toast({
+        title: 'Appointment updated',
+        description: 'The appointment status has been updated successfully.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Handle appointment status update
+  const handleUpdateAppointment = (appointmentId: number, status: string) => {
+    updateAppointmentMutation.mutate({ appointmentId, status });
+  };
+
   // Handle logout
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -307,7 +368,7 @@ export default function DoctorDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div>
+                      <div className="flex items-center space-x-2">
                         <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
                           appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
                           appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
@@ -315,6 +376,26 @@ export default function DoctorDashboard() {
                         }`}>
                           {appointment.status}
                         </span>
+                        
+                        {appointment.status === 'scheduled' && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleUpdateAppointment(appointment.id, 'completed')}>
+                                <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                                <span>Mark as Completed</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleUpdateAppointment(appointment.id, 'cancelled')}>
+                                <XCircle className="mr-2 h-4 w-4 text-red-500" />
+                                <span>Cancel Appointment</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                     </div>
                   ))
