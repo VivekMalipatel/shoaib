@@ -48,19 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: ["/api/user"],
     queryFn: async () => {
       try {
-        // First try Flask backend
-        try {
-          const { getCurrentUser } = await import('../lib/flaskApi');
-          const user = await getCurrentUser();
-          console.log('Get current user success with Flask API:', user);
-          return user;
-        } catch (flaskError) {
-          console.warn('Flask get user failed, falling back to Express:', flaskError);
-          
-          // Fall back to Express backend
-          const expressQueryFn = getQueryFn({ on401: "returnNull" });
-          return await expressQueryFn({ queryKey: ["/api/user"] } as any);
-        }
+        const { getCurrentUser } = await import('../lib/flaskApi');
+        const user = await getCurrentUser();
+        console.log('Get current user success with Flask API:', user);
+        return user;
       } catch (error) {
         console.error('Get user error:', error);
         return null;
@@ -73,36 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (credentials: LoginData) => {
       console.log('Login attempt:', credentials.username);
       try {
-        // First try Flask backend
-        try {
-          // Use the Flask API
-          const { loginWithFlask } = await import('../lib/flaskApi');
-          const userData = await loginWithFlask(credentials.username, credentials.password);
-          console.log('Login success with Flask API:', userData);
-          return userData;
-        } catch (flaskError) {
-          console.warn('Flask login failed, falling back to Express:', flaskError);
-          
-          // Fall back to Express backend
-          const res = await fetch("/api/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(credentials),
-            credentials: "include",
-          });
-          
-          // Check for errors
-          if (!res.ok) {
-            const errorText = await res.text();
-            console.error('Login server error:', res.status, errorText);
-            throw new Error(errorText || "Login failed");
-          }
-          
-          // Parse the response
-          const userData = await res.json();
-          console.log('Login success with Express API:', userData);
-          return userData;
-        }
+        const { loginWithFlask } = await import('../lib/flaskApi');
+        const userData = await loginWithFlask(credentials.username, credentials.password);
+        console.log('Login success with Flask API:', userData);
+        return userData;
       } catch (error) {
         console.error('Login error:', error);
         throw error;
@@ -130,22 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerMutation = useMutation({
     mutationFn: async (userData: InsertUser) => {
       try {
-        // First try Flask backend
-        try {
-          // Use the Flask API
-          const { registerWithFlask } = await import('../lib/flaskApi');
-          const user = await registerWithFlask(userData);
-          console.log('Registration success with Flask API:', user);
-          return user;
-        } catch (flaskError) {
-          console.warn('Flask registration failed, falling back to Express:', flaskError);
-          
-          // Fall back to Express backend
-          const res = await apiRequest("POST", "/api/register", userData);
-          const user = await res.json();
-          console.log('Registration success with Express API:', user);
-          return user;
-        }
+        const { registerWithFlask } = await import('../lib/flaskApi');
+        const user = await registerWithFlask(userData);
+        console.log('Registration success with Flask API:', user);
+        return user;
       } catch (error) {
         console.error('Registration error:', error);
         throw error;
@@ -171,19 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       try {
-        // First try Flask backend
-        try {
-          // Use the Flask API
-          const { logoutFromFlask } = await import('../lib/flaskApi');
-          await logoutFromFlask();
-          console.log('Logout success with Flask API');
-        } catch (flaskError) {
-          console.warn('Flask logout failed, falling back to Express:', flaskError);
-          
-          // Fall back to Express backend
-          await apiRequest("POST", "/api/logout");
-          console.log('Logout success with Express API');
-        }
+        const { logoutFromFlask } = await import('../lib/flaskApi');
+        await logoutFromFlask();
+        console.log('Logout success with Flask API');
       } catch (error) {
         console.error('Logout error:', error);
         throw error;
