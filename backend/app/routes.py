@@ -43,11 +43,17 @@ def register():
     access_token = create_access_token(identity=str(user.id))
     refresh_token = create_refresh_token(identity=str(user.id))
     
-    return jsonify({
-        'user': user.to_dict(),
-        'access_token': access_token,
-        'refresh_token': refresh_token
-    }), 201
+    # Set session cookie
+    from flask import session
+    session['user_id'] = user.id
+    
+    # Set JWT cookies
+    resp = jsonify(user.to_dict())
+    from flask_jwt_extended import set_access_cookies, set_refresh_cookies
+    set_access_cookies(resp, access_token)
+    set_refresh_cookies(resp, refresh_token)
+    
+    return resp, 201
 
 @bp.route('/login', methods=['POST'])
 def login():
@@ -65,11 +71,17 @@ def login():
     access_token = create_access_token(identity=str(user.id))
     refresh_token = create_refresh_token(identity=str(user.id))
     
-    return jsonify({
-        'user': user.to_dict(),
-        'access_token': access_token,
-        'refresh_token': refresh_token
-    }), 200
+    # Set session cookie
+    from flask import session
+    session['user_id'] = user.id
+    
+    # Set JWT cookies
+    resp = jsonify(user.to_dict())
+    from flask_jwt_extended import set_access_cookies, set_refresh_cookies
+    set_access_cookies(resp, access_token)
+    set_refresh_cookies(resp, refresh_token)
+    
+    return resp, 200
 
 @bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
@@ -94,9 +106,16 @@ def get_user():
 
 @bp.route('/logout', methods=['POST'])
 def logout():
-    # JWT is stateless so there's no server-side logout
-    # The frontend should remove the tokens
-    return jsonify({'message': 'Logout successful'}), 200
+    # Clear session
+    from flask import session
+    session.clear()
+    
+    # Clear JWT cookies
+    resp = jsonify({'message': 'Logout successful'})
+    from flask_jwt_extended import unset_jwt_cookies
+    unset_jwt_cookies(resp)
+    
+    return resp, 200
 
 @bp.route('/doctors', methods=['GET'])
 def get_doctors():

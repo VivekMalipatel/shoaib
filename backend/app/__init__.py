@@ -18,8 +18,8 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     jwt.init_app(app)
     
-    # Enable CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # Enable CORS with credentials support
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
     
     # Register blueprints
     from app.routes import bp as api_bp
@@ -34,6 +34,27 @@ def create_app(config_class=Config):
     def internal_error(error):
         db.session.rollback()
         return {'error': 'Internal server error'}, 500
+    
+    # Add a health check route
+    @app.route('/health')
+    def health_check():
+        return {'status': 'ok'}, 200
+    
+    # Add a route for session-based auth
+    @app.route('/api/user', methods=['GET'])
+    def current_user_route():
+        from flask import session, jsonify
+        from app.models import User
+        
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify(None), 401
+            
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify(None), 401
+            
+        return jsonify(user.to_dict())
     
     return app
 
