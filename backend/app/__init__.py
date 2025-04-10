@@ -26,16 +26,17 @@ def create_app(config_class=Config):
     app.config['WTF_CSRF_CHECK_DEFAULT'] = False  # Disable automatic CSRF checks
     app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken']  # Accept CSRF token from this header
     
-    # Enable CORS with credentials support
-    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+    # Enable CORS for all routes with full preflight support
+    CORS(app, resources={r"/*": {"origins": "*", "supports_credentials": True, "allow_headers": "*", "expose_headers": "*", "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]}})
     
     # Register blueprints
     from app.routes import bp as api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
     
     # Exempt specific routes from CSRF protection if needed
-    from app.routes import availability_routes
+    from app.routes import availability_routes, profile_routes
     csrf.exempt(availability_routes)
+    csrf.exempt(profile_routes)  # Exempt profile routes from CSRF protection
     
     # Handle errors
     @app.errorhandler(404)

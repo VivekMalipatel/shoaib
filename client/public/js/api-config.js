@@ -22,7 +22,8 @@ const API_ENDPOINTS = {
     patientAppointments: `${API_BASE_URL}/api/appointments/patient`,
     doctorAppointments: `${API_BASE_URL}/api/appointments/doctor`,
     createAppointment: `${API_BASE_URL}/api/appointments`,
-    updateAppointment: (appointmentId) => `${API_BASE_URL}/api/appointments/${appointmentId}`
+    updateAppointment: (appointmentId) => `${API_BASE_URL}/api/appointments/${appointmentId}`,
+    profile: `${API_BASE_URL}/api/profile`
 };
 
 // Helper function to format dates in Chicago timezone

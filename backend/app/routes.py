@@ -18,6 +18,10 @@ bp = Blueprint('api', __name__)
 availability_routes = Blueprint('availability', __name__)
 bp.register_blueprint(availability_routes)
 
+# Create a separate blueprint for profile routes - FIX: removed url_prefix to match API_ENDPOINTS.profile
+profile_routes = Blueprint('profile', __name__)
+bp.register_blueprint(profile_routes)
+
 @bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json() or {}
@@ -336,3 +340,90 @@ def update_appointment(appointment_id):
     db.session.commit()
     
     return jsonify(appointment.to_dict()), 200
+
+@profile_routes.route('/profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    identity = get_jwt_identity()
+    user = User.query.get(int(identity))
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    return jsonify(user.to_dict()), 200
+
+@profile_routes.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    identity = get_jwt_identity()
+    user = User.query.get(int(identity))
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    data = request.get_json() or {}
+    
+    # Common fields that can be updated for any user
+    common_fields = {
+        'fullName': 'full_name',
+        'phone': 'phone',
+        'address': 'address',
+        'city': 'city',
+        'state': 'state',
+        'zipCode': 'zip_code',
+        'gender': 'gender',
+        'profilePicture': 'profile_picture'
+    }
+    
+    # Fields specific to doctors
+    doctor_fields = {
+        'specialization': 'specialization',
+        'licenseNumber': 'license_number',
+        'education': 'education',
+        'experienceYears': 'experience_years',
+        'hospitalAffiliation': 'hospital_affiliation',
+        'boardCertification': 'board_certification',
+        'bio': 'bio',
+        'consultationFee': 'consultation_fee'
+    }
+    
+    # Fields specific to patients
+    patient_fields = {
+        'insuranceProvider': 'insurance_provider',
+        'insuranceId': 'insurance_id',
+        'emergencyContactName': 'emergency_contact_name',
+        'emergencyContactPhone': 'emergency_contact_phone',
+        'medicalHistory': 'medical_history',
+        'allergies': 'allergies',
+        'currentMedications': 'current_medications',
+        'bloodType': 'blood_type'
+    }
+    
+    # Update common fields
+    for json_field, db_field in common_fields.items():
+        if json_field in data:
+            setattr(user, db_field, data[json_field])
+    
+    # Update role-specific fields
+    if user.role == 'doctor':
+        for json_field, db_field in doctor_fields.items():
+            if json_field in data:
+                setattr(user, db_field, data[json_field])
+    elif user.role == 'patient':
+        for json_field, db_field in patient_fields.items():
+            if json_field in data:
+                setattr(user, db_field, data[json_field])
+    
+    # Handle date of birth separately due to format conversion
+    if 'dateOfBirth' in data and data['dateOfBirth']:
+        try:
+            user.date_of_birth = datetime.fromisoformat(data['dateOfBirth'].replace('Z', '+00:00')).date()
+        except ValueError:
+            return jsonify({'error': 'Invalid date format for date of birth. Use ISO format'}), 400
+    
+    # Update the timestamp
+    user.updated_at = datetime.utcnow()
+    
+    db.session.commit()
+    
+    return jsonify(user.to_dict()), 200
