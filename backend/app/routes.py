@@ -16,7 +16,7 @@ def register():
     data = request.get_json() or {}
     
     # Check required fields
-    if not all(k in data for k in ('username', 'email', 'password', 'role')):
+    if not all(k in data for k in ('username', 'email', 'password', 'role', 'fullName')):
         return jsonify({'error': 'Missing required fields'}), 400
     
     # Check if username or email already exists
@@ -31,8 +31,10 @@ def register():
         username=data['username'],
         email=data['email'],
         role=data['role'],
-        first_name=data.get('first_name', ''),
-        last_name=data.get('last_name', '')
+        full_name=data['fullName'],
+        specialization=data.get('specialization', ''),
+        license_number=data.get('licenseNumber', ''),
+        phone=data.get('phone', '')
     )
     user.set_password(data['password'])
     
@@ -181,44 +183,28 @@ def create_appointment():
     
     data = request.get_json() or {}
     
-    if not all(k in data for k in ('doctor_id', 'date', 'time', 'appointment_type')):
+    if not all(k in data for k in ('doctorId', 'date', 'type')):
         return jsonify({'error': 'Missing required fields'}), 400
     
     # Validate doctor exists
-    doctor = User.query.get(data['doctor_id'])
+    doctor = User.query.get(data['doctorId'])
     if not doctor or doctor.role != 'doctor':
         return jsonify({'error': 'Doctor not found'}), 404
     
-    # Convert date string to date object
+    # Convert date string to datetime object
     try:
-        date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        appointment_date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
     except ValueError:
-        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-    
-    # Check if the time slot is available for this doctor
-    availability = Availability.query.filter_by(doctor_id=data['doctor_id'], date=date).first()
-    
-    if not availability or data['time'] not in availability.time_slots:
-        return jsonify({'error': 'Selected time slot is not available'}), 400
-    
-    # Check if the time slot is already booked
-    existing_appointment = Appointment.query.filter_by(
-        doctor_id=data['doctor_id'],
-        date=date,
-        time=data['time'],
-        status='scheduled'
-    ).first()
-    
-    if existing_appointment:
-        return jsonify({'error': 'This time slot is already booked'}), 400
+        return jsonify({'error': 'Invalid date format. Use ISO format'}), 400
     
     # Create new appointment
     appointment = Appointment(
-        doctor_id=data['doctor_id'],
+        doctor_id=data['doctorId'],
         patient_id=patient.id,
-        date=date,
-        time=data['time'],
-        appointment_type=data['appointment_type'],
+        date=appointment_date,
+        duration=data.get('duration', 30),
+        type=data['type'],
+        status='scheduled',
         notes=data.get('notes', '')
     )
     
@@ -243,7 +229,7 @@ def get_doctor_appointments():
     for appointment in appointments:
         data = appointment.to_dict()
         patient = User.query.get(appointment.patient_id)
-        data['patient_name'] = f"{patient.first_name} {patient.last_name}" if patient else "Unknown"
+        data['patientName'] = patient.full_name if patient else "Unknown"
         results.append(data)
     
     return jsonify(results), 200
@@ -264,7 +250,7 @@ def get_patient_appointments():
     for appointment in appointments:
         data = appointment.to_dict()
         doctor = User.query.get(appointment.doctor_id)
-        data['doctor_name'] = f"{doctor.first_name} {doctor.last_name}" if doctor else "Unknown"
+        data['doctorName'] = doctor.full_name if doctor else "Unknown"
         results.append(data)
     
     return jsonify(results), 200
@@ -300,15 +286,15 @@ def update_appointment(appointment_id):
     if appointment.status == 'scheduled':
         if 'date' in data:
             try:
-                appointment.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+                appointment.date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
             except ValueError:
-                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+                return jsonify({'error': 'Invalid date format. Use ISO format'}), 400
         
-        if 'time' in data:
-            appointment.time = data['time']
+        if 'duration' in data:
+            appointment.duration = data['duration']
         
-        if 'appointment_type' in data:
-            appointment.appointment_type = data['appointment_type']
+        if 'type' in data:
+            appointment.type = data['type']
     
     db.session.commit()
     
