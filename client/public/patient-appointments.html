@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Appointments - MediConnect</title>
+    <!-- Add reference to the API configuration file -->
+    <script src="/js/api-config.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -213,64 +215,24 @@
             </div>
 
             <div id="upcoming-tab" class="tab-content">
-                <div class="appointment-list">
-                    <div class="appointment-item">
-                        <div class="appointment-details">
-                            <div><strong>Dr. John Smith</strong> - Cardiology <span class="badge badge-scheduled">Scheduled</span></div>
-                            <div>Tomorrow at 10:00 AM - Regular Checkup</div>
-                        </div>
-                        <div class="appointment-actions">
-                            <button class="btn btn-secondary view-btn">View Details</button>
-                            <button class="btn btn-danger cancel-btn">Cancel</button>
-                        </div>
+                <div class="appointment-list" id="upcoming-appointments">
+                    <!-- Loading indicator -->
+                    <div id="loading-appointments" style="text-align: center; padding: 2rem;">
+                        Loading appointments...
                     </div>
-                    <div class="appointment-item">
-                        <div class="appointment-details">
-                            <div><strong>Dr. Emily Wilson</strong> - Pediatrics <span class="badge badge-scheduled">Scheduled</span></div>
-                            <div>Next Week, April 16, 2025 at 2:30 PM - Follow-up</div>
-                        </div>
-                        <div class="appointment-actions">
-                            <button class="btn btn-secondary view-btn">View Details</button>
-                            <button class="btn btn-danger cancel-btn">Cancel</button>
-                        </div>
-                    </div>
+                    <!-- Appointments will be inserted here by JavaScript -->
                 </div>
             </div>
 
             <div id="past-tab" class="tab-content" style="display: none;">
-                <div class="appointment-list">
-                    <div class="appointment-item">
-                        <div class="appointment-details">
-                            <div><strong>Dr. Sarah Johnson</strong> - Dermatology <span class="badge badge-completed">Completed</span></div>
-                            <div>March 25, 2025 at 11:15 AM - Regular Checkup</div>
-                        </div>
-                        <div class="appointment-actions">
-                            <button class="btn btn-secondary view-btn">View Details</button>
-                        </div>
-                    </div>
-                    <div class="appointment-item">
-                        <div class="appointment-details">
-                            <div><strong>Dr. Michael Brown</strong> - Neurology <span class="badge badge-completed">Completed</span></div>
-                            <div>February 10, 2025 at 9:00 AM - Consultation</div>
-                        </div>
-                        <div class="appointment-actions">
-                            <button class="btn btn-secondary view-btn">View Details</button>
-                        </div>
-                    </div>
+                <div class="appointment-list" id="past-appointments">
+                    <!-- Past appointments will be inserted here by JavaScript -->
                 </div>
             </div>
 
             <div id="cancelled-tab" class="tab-content" style="display: none;">
-                <div class="appointment-list">
-                    <div class="appointment-item">
-                        <div class="appointment-details">
-                            <div><strong>Dr. David Jones</strong> - Psychiatry <span class="badge badge-cancelled">Cancelled</span></div>
-                            <div>April 5, 2025 at 3:00 PM - Consultation</div>
-                        </div>
-                        <div class="appointment-actions">
-                            <button class="btn btn-secondary view-btn">View Details</button>
-                        </div>
-                    </div>
+                <div class="appointment-list" id="cancelled-appointments">
+                    <!-- Cancelled appointments will be inserted here by JavaScript -->
                 </div>
             </div>
         </div>
@@ -298,8 +260,18 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Check if user is authenticated as a patient
-            fetch('/api/user')
+            // Global variables
+            let currentAppointments = [];
+            let currentAppointment = null;
+            const token = localStorage.getItem('access_token');
+            
+            // Check if user is authenticated as a patient - using API_ENDPOINTS
+            fetch(API_ENDPOINTS.user, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                credentials: 'include'
+            })
                 .then(response => {
                     if (!response.ok) {
                         window.location.href = '/auth.html';
@@ -311,31 +283,371 @@
                     if (user.role !== 'patient') {
                         window.location.href = '/doctor-dashboard.html';
                     }
+                    
+                    // Load appointments
+                    loadAppointments();
                 })
                 .catch(error => {
                     console.error('Authentication error:', error);
                     window.location.href = '/auth.html';
                 });
-
-            // Logout button handler
-            document.getElementById('logout-btn').addEventListener('click', function(e) {
-                e.preventDefault();
                 
-                fetch('/api/logout', {
-                    method: 'POST',
+            // Load appointments from API
+            function loadAppointments() {
+                const loadingIndicator = document.getElementById('loading-appointments');
+                
+                // Show loading indicator
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'block';
+                }
+                
+                fetch(API_ENDPOINTS.patientAppointments, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
                     credentials: 'include'
                 })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Logout failed');
+                        throw new Error('Failed to fetch appointments');
                     }
-                    window.location.href = '/auth.html';
+                    return response.json();
+                })
+                .then(appointments => {
+                    // Store appointments
+                    currentAppointments = appointments;
+                    
+                    // Sort by date (latest first)
+                    currentAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    // Categorize and display appointments
+                    displayAppointments(currentAppointments);
+                    
+                    // Hide loading indicator
+                    if (loadingIndicator) {
+                        loadingIndicator.style.display = 'none';
+                    }
                 })
                 .catch(error => {
-                    console.error('Logout error:', error);
-                    window.location.href = '/auth.html';
+                    console.error('Error loading appointments:', error);
+                    const upcomingList = document.getElementById('upcoming-appointments');
+                    upcomingList.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                            Failed to load appointments. Please try refreshing the page.
+                        </div>
+                    `;
                 });
-            });
+            }
+            
+            // Display appointments
+            function displayAppointments(appointments) {
+                // Clear existing appointments
+                document.getElementById('upcoming-appointments').innerHTML = '';
+                document.getElementById('past-appointments').innerHTML = '';
+                document.getElementById('cancelled-appointments').innerHTML = '';
+                
+                // Check if no appointments
+                if (appointments.length === 0) {
+                    document.getElementById('upcoming-appointments').innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            You don't have any appointments yet. <a href="/patient-find-doctors.html">Book an appointment</a>
+                        </div>
+                    `;
+                    document.getElementById('past-appointments').innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            You don't have any past appointments.
+                        </div>
+                    `;
+                    document.getElementById('cancelled-appointments').innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            You don't have any cancelled appointments.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const now = new Date();
+                
+                // Categorize appointments
+                const upcomingAppointments = appointments.filter(a => {
+                    // Create date objects with no time component to compare dates only
+                    const appointmentDate = new Date(a.date);
+                    const nowDate = new Date();
+                    
+                    // Set both to midnight for date comparison only
+                    const appointmentDateOnly = new Date(
+                        appointmentDate.getFullYear(),
+                        appointmentDate.getMonth(),
+                        appointmentDate.getDate()
+                    );
+                    
+                    const todayDateOnly = new Date(
+                        nowDate.getFullYear(),
+                        nowDate.getMonth(),
+                        nowDate.getDate()
+                    );
+                    
+                    // If same day, check time
+                    if (appointmentDateOnly.getTime() === todayDateOnly.getTime()) {
+                        return appointmentDate > nowDate && a.status === 'scheduled';
+                    }
+                    
+                    // Otherwise check if date is in future
+                    return appointmentDateOnly >= todayDateOnly && a.status === 'scheduled';
+                });
+                
+                const pastAppointments = appointments.filter(a => {
+                    // If it's completed, it's in the past
+                    if (a.status === 'completed') return true;
+                    
+                    // Create date objects
+                    const appointmentDate = new Date(a.date);
+                    const nowDate = new Date();
+                    
+                    // Set both to midnight for date comparison only
+                    const appointmentDateOnly = new Date(
+                        appointmentDate.getFullYear(),
+                        appointmentDate.getMonth(),
+                        appointmentDate.getDate()
+                    );
+                    
+                    const todayDateOnly = new Date(
+                        nowDate.getFullYear(),
+                        nowDate.getMonth(),
+                        nowDate.getDate()
+                    );
+                    
+                    // If same day, check time
+                    if (appointmentDateOnly.getTime() === todayDateOnly.getTime()) {
+                        return appointmentDate < nowDate;
+                    }
+                    
+                    // Otherwise check if date is in past
+                    return appointmentDateOnly < todayDateOnly;
+                });
+                
+                const cancelledAppointments = appointments.filter(a => a.status === 'cancelled');
+                
+                // Display upcoming appointments
+                if (upcomingAppointments.length === 0) {
+                    document.getElementById('upcoming-appointments').innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            You don't have any upcoming appointments. <a href="/patient-find-doctors.html">Book an appointment</a>
+                        </div>
+                    `;
+                } else {
+                    upcomingAppointments.forEach(appointment => {
+                        addAppointmentToList('upcoming-appointments', appointment);
+                    });
+                }
+                
+                // Display past appointments
+                if (pastAppointments.length === 0) {
+                    document.getElementById('past-appointments').innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            You don't have any past appointments.
+                        </div>
+                    `;
+                } else {
+                    pastAppointments.forEach(appointment => {
+                        addAppointmentToList('past-appointments', appointment);
+                    });
+                }
+                
+                // Display cancelled appointments
+                if (cancelledAppointments.length === 0) {
+                    document.getElementById('cancelled-appointments').innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            You don't have any cancelled appointments.
+                        </div>
+                    `;
+                } else {
+                    cancelledAppointments.forEach(appointment => {
+                        addAppointmentToList('cancelled-appointments', appointment);
+                    });
+                }
+                
+                // Set up event listeners for new buttons
+                setupEventListeners();
+                
+                // Apply filters
+                filterAppointments();
+            }
+            
+            // Add appointment to list
+            function addAppointmentToList(listId, appointment) {
+                const list = document.getElementById(listId);
+                
+                // Format date
+                const appointmentDate = new Date(appointment.date);
+                const today = getChicagoDate();
+                today.setHours(0, 0, 0, 0);
+                
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                let dateDisplay;
+                
+                if (appointmentDate.toDateString() === today.toDateString()) {
+                    dateDisplay = 'Today';
+                } else if (appointmentDate.toDateString() === tomorrow.toDateString()) {
+                    dateDisplay = 'Tomorrow';
+                } else {
+                    dateDisplay = formatInChicagoTimezone(appointmentDate, { 
+                        month: 'long', 
+                        day: 'numeric',
+                        year: 'numeric' 
+                    });
+                }
+                
+                // Format time
+                const timeDisplay = formatInChicagoTimezone(appointmentDate, { 
+                    hour: 'numeric', 
+                    minute: '2-digit',
+                    hour12: true 
+                });
+                
+                // Create badge class based on status
+                let badgeClass = 'badge-scheduled';
+                if (appointment.status === 'completed') {
+                    badgeClass = 'badge-completed';
+                } else if (appointment.status === 'cancelled') {
+                    badgeClass = 'badge-cancelled';
+                }
+                
+                // Create appointment item
+                const appointmentItem = document.createElement('div');
+                appointmentItem.className = 'appointment-item';
+                appointmentItem.dataset.id = appointment.id;
+                
+                appointmentItem.innerHTML = `
+                    <div class="appointment-details">
+                        <div><strong>Dr. ${appointment.doctorName}</strong> - ${appointment.doctorSpecialization || 'Specialist'} <span class="badge ${badgeClass}">${appointment.status}</span></div>
+                        <div>${dateDisplay} at ${timeDisplay} - ${appointment.type}</div>
+                    </div>
+                    <div class="appointment-actions">
+                        <button class="btn btn-secondary view-btn">View Details</button>
+                        ${appointment.status === 'scheduled' ? 
+                            `<button class="btn btn-danger cancel-btn">Cancel</button>` : ''}
+                    </div>
+                `;
+                
+                list.appendChild(appointmentItem);
+            }
+            
+            // Set up event listeners
+            function setupEventListeners() {
+                // View details buttons
+                document.querySelectorAll('.view-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const appointmentItem = this.closest('.appointment-item');
+                        const appointmentId = appointmentItem.dataset.id;
+                        
+                        // Find the appointment
+                        currentAppointment = currentAppointments.find(a => a.id == appointmentId);
+                        
+                        if (currentAppointment) {
+                            // Format date for display
+                            const appointmentDate = new Date(currentAppointment.date);
+                            const dateTimeDisplay = appointmentDate.toLocaleDateString('en-US', { 
+                                weekday: 'long',
+                                month: 'long', 
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric', 
+                                minute: '2-digit',
+                                hour12: true
+                            });
+                            
+                            document.getElementById('modal-doctor-name').textContent = `Dr. ${currentAppointment.doctorName}`;
+                            document.getElementById('modal-specialization').textContent = currentAppointment.doctorSpecialization || 'Specialist';
+                            document.getElementById('modal-date-time').textContent = dateTimeDisplay;
+                            document.getElementById('modal-type').textContent = currentAppointment.type;
+                            document.getElementById('modal-status').textContent = currentAppointment.status;
+                            
+                            if (currentAppointment.notes) {
+                                document.getElementById('modal-notes').textContent = currentAppointment.notes;
+                            } else {
+                                document.getElementById('modal-notes').textContent = 'No additional notes for this appointment.';
+                            }
+                            
+                            // Show/hide action buttons based on status
+                            if (currentAppointment.status === 'scheduled') {
+                                document.getElementById('modal-cancel-btn').style.display = 'block';
+                                document.getElementById('modal-reschedule-btn').style.display = 'block';
+                            } else {
+                                document.getElementById('modal-cancel-btn').style.display = 'none';
+                                document.getElementById('modal-reschedule-btn').style.display = 'none';
+                            }
+                            
+                            // Show modal
+                            document.getElementById('appointment-modal').style.display = 'block';
+                        }
+                    });
+                });
+                
+                // Cancel buttons
+                document.querySelectorAll('.cancel-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const appointmentItem = this.closest('.appointment-item');
+                        const appointmentId = appointmentItem.dataset.id;
+                        const doctorName = appointmentItem.querySelector('strong').textContent;
+                        
+                        if (confirm(`Are you sure you want to cancel your appointment with ${doctorName}?`)) {
+                            cancelAppointment(appointmentId);
+                        }
+                    });
+                });
+            }
+            
+            // Cancel appointment function
+            function cancelAppointment(appointmentId) {
+                fetch(API_ENDPOINTS.updateAppointment(appointmentId), {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        status: 'cancelled'
+                    }),
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to cancel appointment');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update the appointment in our data
+                    const index = currentAppointments.findIndex(a => a.id == appointmentId);
+                    if (index !== -1) {
+                        // Preserve the doctor name when updating the appointment
+                        const doctorName = currentAppointments[index].doctorName;
+                        const doctorSpecialization = currentAppointments[index].doctorSpecialization;
+                        
+                        currentAppointments[index] = data;
+                        
+                        // Keep doctor info if it's missing in the response
+                        currentAppointments[index].doctorName = doctorName || currentAppointments[index].doctorName;
+                        currentAppointments[index].doctorSpecialization = doctorSpecialization || currentAppointments[index].doctorSpecialization;
+                    }
+                    
+                    // Re-categorize and display appointments
+                    displayAppointments(currentAppointments);
+                    
+                    // Close modal if it's open
+                    document.getElementById('appointment-modal').style.display = 'none';
+                    
+                    // Show success message
+                    alert('Appointment cancelled successfully');
+                })
+                .catch(error => {
+                    console.error('Error cancelling appointment:', error);
+                    alert('Failed to cancel appointment. Please try again.');
+                });
+            }
 
             // Tab switching
             const tabs = document.querySelectorAll('.tab');
@@ -362,7 +674,7 @@
             document.getElementById('search-input').addEventListener('input', filterAppointments);
             
             function filterAppointments() {
-                const typeFilter = document.getElementById('type-filter').value;
+                const typeFilter = document.getElementById('type-filter').value.toLowerCase();
                 const searchFilter = document.getElementById('search-input').value.toLowerCase();
                 
                 const appointments = document.querySelectorAll('.appointment-item');
@@ -389,66 +701,6 @@
             const modalCancelBtn = document.getElementById('modal-cancel-btn');
             const modalRescheduleBtn = document.getElementById('modal-reschedule-btn');
             
-            // View details buttons
-            const viewBtns = document.querySelectorAll('.view-btn');
-            viewBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const appointmentItem = this.closest('.appointment-item');
-                    const doctorInfoText = appointmentItem.querySelector('.appointment-details div:nth-child(1)').textContent;
-                    const doctorName = appointmentItem.querySelector('strong').textContent;
-                    const specialization = doctorInfoText.split(' - ')[1].split(' ')[0];
-                    const status = appointmentItem.querySelector('.badge').textContent.toLowerCase();
-                    const dateTimeAndType = appointmentItem.querySelector('.appointment-details div:nth-child(2)').textContent;
-                    
-                    document.getElementById('modal-doctor-name').textContent = doctorName;
-                    document.getElementById('modal-specialization').textContent = specialization;
-                    document.getElementById('modal-date-time').textContent = dateTimeAndType.split(' - ')[0];
-                    document.getElementById('modal-type').textContent = dateTimeAndType.split(' - ')[1];
-                    document.getElementById('modal-status').textContent = status;
-                    
-                    // Show/hide action buttons based on status
-                    if (status === 'completed' || status === 'cancelled') {
-                        modalCancelBtn.style.display = 'none';
-                        modalRescheduleBtn.style.display = 'none';
-                    } else {
-                        modalCancelBtn.style.display = 'block';
-                        modalRescheduleBtn.style.display = 'block';
-                    }
-                    
-                    modal.style.display = 'block';
-                });
-            });
-            
-            // Cancel buttons
-            const cancelBtns = document.querySelectorAll('.cancel-btn');
-            cancelBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const appointmentItem = this.closest('.appointment-item');
-                    const doctorName = appointmentItem.querySelector('strong').textContent;
-                    const dateTime = appointmentItem.querySelector('.appointment-details div:nth-child(2)').textContent.split(' - ')[0];
-                    
-                    if (confirm(`Are you sure you want to cancel your appointment with ${doctorName} on ${dateTime}?`)) {
-                        // In a real app, you would send a request to cancel the appointment
-                        alert('Appointment cancelled successfully');
-                        
-                        // Move the appointment to the cancelled tab
-                        const cancelledTab = document.getElementById('cancelled-tab');
-                        const appointmentList = cancelledTab.querySelector('.appointment-list');
-                        
-                        // Update the badge
-                        const badge = appointmentItem.querySelector('.badge');
-                        badge.textContent = 'Cancelled';
-                        badge.className = 'badge badge-cancelled';
-                        
-                        // Remove cancel button
-                        appointmentItem.querySelector('.cancel-btn').remove();
-                        
-                        // Move the appointment
-                        appointmentList.appendChild(appointmentItem);
-                    }
-                });
-            });
-            
             // Close modal
             closeModal.addEventListener('click', function() {
                 modal.style.display = 'none';
@@ -466,27 +718,46 @@
             
             // Cancel appointment from modal
             modalCancelBtn.addEventListener('click', function() {
-                const doctorName = document.getElementById('modal-doctor-name').textContent;
-                const dateTime = document.getElementById('modal-date-time').textContent;
-                
-                if (confirm(`Are you sure you want to cancel your appointment with ${doctorName} on ${dateTime}?`)) {
-                    // In a real app, you would send a request to cancel the appointment
-                    alert('Appointment cancelled successfully');
-                    modal.style.display = 'none';
-                    
-                    // Refresh the page to see the updated appointment list
-                    // window.location.reload();
+                if (currentAppointment) {
+                    if (confirm(`Are you sure you want to cancel your appointment with Dr. ${currentAppointment.doctorName}?`)) {
+                        cancelAppointment(currentAppointment.id);
+                    }
                 }
             });
             
             // Reschedule appointment
             modalRescheduleBtn.addEventListener('click', function() {
-                const doctorName = document.getElementById('modal-doctor-name').textContent;
-                alert(`Redirecting to reschedule appointment with ${doctorName}. This would take you to a booking page.`);
-                modal.style.display = 'none';
+                if (currentAppointment) {
+                    alert(`Redirecting to reschedule appointment with Dr. ${currentAppointment.doctorName}. This would take you to a booking page.`);
+                    modal.style.display = 'none';
+                    
+                    // In a real app, you would redirect to a booking page with the doctor ID
+                    window.location.href = `/patient-find-doctors.html?reschedule=true&doctor_id=${currentAppointment.doctorId}`;
+                }
+            });
+
+            // Logout button handler - using API_ENDPOINTS
+            document.getElementById('logout-btn').addEventListener('click', function(e) {
+                e.preventDefault();
                 
-                // In a real app, you would redirect to a booking page
-                // window.location.href = `/patient-find-doctors.html?reschedule=true&doctor=${doctorName}`;
+                // Clear local storage tokens
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                
+                fetch(API_ENDPOINTS.logout, {
+                    method: 'POST',
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Logout failed');
+                    }
+                    window.location.href = '/auth.html?logout=true';
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    window.location.href = '/auth.html?logout=true';
+                });
             });
         });
     </script>

@@ -281,12 +281,13 @@ def get_patient_appointments():
     
     appointments = Appointment.query.filter_by(patient_id=patient.id).all()
     
-    # Include doctor name in response
+    # Include doctor name and specialization in response
     results = []
     for appointment in appointments:
         data = appointment.to_dict()
         doctor = User.query.get(appointment.doctor_id)
         data['doctorName'] = doctor.full_name if doctor else "Unknown"
+        data['doctorSpecialization'] = doctor.specialization if doctor else ""
         results.append(data)
     
     return jsonify(results), 200
