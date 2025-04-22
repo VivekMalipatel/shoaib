@@ -4,13 +4,17 @@ from datetime import timedelta
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
     
-    # Adjust PostgreSQL connection format if needed
+    # Get PostgreSQL connection URL from environment
     db_url = os.environ.get('DATABASE_URL')
-    if db_url and db_url.startswith('postgres://'):
+    if not db_url:
+        raise ValueError("DATABASE_URL environment variable not set. PostgreSQL connection is required.")
+    
+    # Adjust PostgreSQL connection format if needed
+    if db_url.startswith('postgres://'):
         # Heroku-style URL
         db_url = db_url.replace('postgres://', 'postgresql://', 1)
     
-    SQLALCHEMY_DATABASE_URI = db_url or 'sqlite:///app.db'
+    SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-key'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)

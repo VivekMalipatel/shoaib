@@ -5,12 +5,21 @@ Create/reset database script.
 Use this to initialize the database with tables that match our models.
 """
 
-from app import create_app, db
 import os
+import pathlib
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Now import the app modules after environment variables are loaded
+from app import create_app, db
 
 def create_database():
     # Create a Flask app context
     app = create_app()
+    
+    # Print which database we're using
+    print(f"Using database: {app.config['SQLALCHEMY_DATABASE_URI']}")
     
     with app.app_context():
         print("Dropping all tables (if they exist)...")
