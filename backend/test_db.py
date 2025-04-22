@@ -1,5 +1,16 @@
 #!/usr/bin/env python
 
+import os
+
+# Manually read the .env file
+env_vars = {}
+with open('.env', 'r') as f:
+    for line in f:
+        line = line.strip()
+        if line and not line.startswith('#'):
+            key, value = line.split('=', 1)
+            os.environ[key] = value
+
 from app import db, create_app
 from sqlalchemy import text
 

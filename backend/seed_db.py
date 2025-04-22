@@ -5,6 +5,18 @@ Seed script to create test doctors and patients in the database.
 Run this script after initializing the database to have test accounts ready.
 """
 
+import os
+
+# Manually read the .env file
+if os.path.exists('.env'):
+    env_vars = {}
+    with open('.env', 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                key, value = line.split('=', 1)
+                os.environ[key] = value
+
 from app import create_app, db
 from app.models import User
 from werkzeug.security import generate_password_hash

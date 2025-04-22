@@ -7,9 +7,15 @@ Use this to initialize the database with tables that match our models.
 
 import os
 import pathlib
-from dotenv import load_dotenv
 
-load_dotenv()
+# Manually read the .env file
+env_vars = {}
+with open('.env', 'r') as f:
+    for line in f:
+        line = line.strip()
+        if line and not line.startswith('#'):
+            key, value = line.split('=', 1)
+            os.environ[key] = value
 
 # Now import the app modules after environment variables are loaded
 from app import create_app, db

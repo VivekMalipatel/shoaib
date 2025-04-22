@@ -1,8 +1,10 @@
 import os
 from datetime import timedelta
-
+from dotenv import load_dotenv
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
+
+    load_dotenv()
     
     # Get PostgreSQL connection URL from environment
     db_url = os.environ.get('DATABASE_URL')
