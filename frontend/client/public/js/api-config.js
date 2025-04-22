@@ -5,8 +5,9 @@
  * Change this file to update the API URL throughout the application.
  */
 
-// Backend API URL - pointing to the Flask server running on port 5001
-const API_BASE_URL = 'http://localhost:5001';
+// Use relative URLs for API endpoints to work with Vite's proxy
+// This will automatically use the same origin as the frontend
+const API_BASE_URL = '';
 
 // Set default timezone to Chicago (US Central Time)
 const DEFAULT_TIMEZONE = 'America/Chicago';

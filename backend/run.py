@@ -27,6 +27,22 @@ def make_shell_context():
     }
 
 if __name__ == '__main__':
-    # Use port 5001 instead of 5000 to avoid conflict with AirPlay on macOS
+    # Get the port from environment variable, defaulting to 5001 if not set
     port = int(os.environ.get('PORT', 5001))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    
+    # Print debug information to help with connection issues
+    print(f"Starting server on 0.0.0.0:{port}")
+    print(f"The server will be accessible via:")
+    print(f"  - http://127.0.0.1:{port}")
+    print(f"  - http://localhost:{port}")
+    
+    # Add CORS headers to ensure frontend can connect
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    # Run with host set to '0.0.0.0' to bind to all interfaces
+    app.run(host='0.0.0.0', port=port, debug=True, threaded=True)
