@@ -10,7 +10,7 @@ from flask_jwt_extended import (
     set_refresh_cookies,
     unset_jwt_cookies
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 
 bp = Blueprint('api', __name__)
 
@@ -427,3 +427,35 @@ def update_profile():
     db.session.commit()
     
     return jsonify(user.to_dict()), 200
+
+@bp.route('/doctor-slots/<int:doctor_id>', methods=['GET'])
+def get_doctor_booked_slots(doctor_id):
+    """Public endpoint to get a doctor's booked slots without sensitive information"""
+    date_filter = request.args.get('date')
+    
+    # Query for scheduled appointments for this doctor
+    query = Appointment.query.filter_by(doctor_id=doctor_id, status='scheduled')
+    
+    # Apply date filter if provided
+    if date_filter:
+        try:
+            filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
+            # Filter appointments for the specific date
+            query = query.filter(
+                Appointment.date >= datetime.combine(filter_date, datetime.min.time()),
+                Appointment.date < datetime.combine(filter_date + timedelta(days=1), datetime.min.time())
+            )
+        except ValueError:
+            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    
+    appointments = query.all()
+    
+    # Return only time slot information, no personal data
+    slots = []
+    for appointment in appointments:
+        slots.append({
+            'date': appointment.date.isoformat(),
+            'status': appointment.status
+        })
+    
+    return jsonify(slots), 200

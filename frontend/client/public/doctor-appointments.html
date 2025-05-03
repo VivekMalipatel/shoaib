@@ -450,22 +450,33 @@
                     const yesterday = new Date(today);
                     yesterday.setDate(yesterday.getDate() - 1);
                     
-                    if (appointmentDate.toDateString() === today.toDateString()) {
+                    // Get appointment date in Chicago timezone
+                    const appointmentDateInChicago = new Date(formatInChicagoTimezone(appointmentDate, {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        second: 'numeric',
+                        hour12: false
+                    }));
+                    
+                    if (appointmentDateInChicago.toDateString() === today.toDateString()) {
                         dateDisplay = 'Today';
-                    } else if (appointmentDate.toDateString() === tomorrow.toDateString()) {
+                    } else if (appointmentDateInChicago.toDateString() === tomorrow.toDateString()) {
                         dateDisplay = 'Tomorrow';
-                    } else if (appointmentDate.toDateString() === yesterday.toDateString()) {
+                    } else if (appointmentDateInChicago.toDateString() === yesterday.toDateString()) {
                         dateDisplay = 'Yesterday';
                     } else {
-                        dateDisplay = appointmentDate.toLocaleDateString('en-US', { 
+                        dateDisplay = formatInChicagoTimezone(appointmentDate, { 
                             month: 'long', 
                             day: 'numeric',
                             year: 'numeric'
                         });
                     }
                     
-                    // Format time
-                    const timeDisplay = appointmentDate.toLocaleTimeString('en-US', { 
+                    // Format time in Chicago timezone with proper handling of 30-minute intervals
+                    const timeDisplay = formatInChicagoTimezone(appointmentDate, { 
                         hour: 'numeric', 
                         minute: '2-digit',
                         hour12: true
@@ -517,9 +528,9 @@
                         currentAppointment = appointments.find(a => a.id == appointmentId);
                         
                         if (currentAppointment) {
-                            // Format date for display
+                            // Format date for display using Chicago timezone
                             const appointmentDate = new Date(currentAppointment.date);
-                            const dateTimeDisplay = appointmentDate.toLocaleDateString('en-US', { 
+                            const dateTimeDisplay = formatInChicagoTimezone(appointmentDate, { 
                                 weekday: 'long',
                                 month: 'long', 
                                 day: 'numeric',

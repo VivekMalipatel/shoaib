@@ -741,32 +741,35 @@
                 }
                 
                 // Get start and end hours from availability
-                const startHour = parseInt(dateAvailability.startTime.split(':')[0]);
-                const endHour = parseInt(dateAvailability.endTime.split(':')[0]);
+                const [startHour, startMinute] = dateAvailability.startTime.split(':').map(Number);
+                const [endHour, endMinute] = dateAvailability.endTime.split(':').map(Number);
+                
+                // Calculate start and end times in minutes for easier comparison
+                const startTimeInMinutes = startHour * 60 + startMinute;
+                const endTimeInMinutes = endHour * 60 + endMinute;
                 
                 // Generate time slots in 30-minute increments
                 timeSlotList.innerHTML = '';
                 const timeSlots = [];
                 
-                for (let hour = startHour; hour < endHour; hour++) {
-                    for (let minute of [0, 30]) {
-                        // Skip if this would go beyond end time
-                        if (hour === endHour - 1 && minute === 30) continue;
-                        
-                        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-                        
-                        // Format for display (12-hour clock)
-                        let displayHour = hour % 12;
-                        if (displayHour === 0) displayHour = 12;
-                        const ampm = hour < 12 ? 'AM' : 'PM';
-                        const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
-                        
-                        timeSlots.push({ time: timeStr, display: displayTime });
-                    }
+                // Start from the exact start time and go up to end time in 30-minute increments
+                for (let timeInMinutes = startTimeInMinutes; timeInMinutes < endTimeInMinutes; timeInMinutes += 30) {
+                    const hour = Math.floor(timeInMinutes / 60);
+                    const minute = timeInMinutes % 60;
+                    
+                    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    
+                    // Format for display (12-hour clock)
+                    let displayHour = hour % 12;
+                    if (displayHour === 0) displayHour = 12;
+                    const ampm = hour < 12 ? 'AM' : 'PM';
+                    const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+                    
+                    timeSlots.push({ time: timeStr, display: displayTime });
                 }
                 
                 // Check for existing appointments to block out time slots
-                fetch(API_ENDPOINTS.doctorAppointments + `?doctor_id=${currentDoctorId}&date=${dateStr}`, {
+                fetch(`${API_BASE_URL}/api/doctor-slots/${currentDoctorId}?date=${dateStr}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     },
@@ -774,29 +777,66 @@
                 })
                 .then(response => {
                     if (!response.ok) {
+                        console.error('Error fetching booked slots:', response.statusText);
                         return []; // Assume no appointments if error
                     }
                     return response.json();
                 })
-                .then(appointments => {
-                    // Block out time slots that are already booked
-                    const bookedTimes = appointments
-                        .filter(a => a.status === 'scheduled')
-                        .map(a => {
-                            const date = new Date(a.date);
-                            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-                        });
+                .then(bookedSlots => {
+                    console.log('Fetched booked slots:', bookedSlots);
+                    
+                    // Extract time information from booked slots
+                    const bookedTimes = bookedSlots.map(slot => {
+                        const date = new Date(slot.date);
+                        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    });
+                    
+                    console.log('Booked times for selected date:', bookedTimes);
                     
                     // Add time slots to the UI
                     timeSlots.forEach(slot => {
                         const isBooked = bookedTimes.includes(slot.time);
                         
-                        const slotElement = document.createElement('div');
-                        slotElement.className = isBooked ? 'time-slot unavailable' : 'time-slot available';
-                        slotElement.textContent = slot.display;
-                        slotElement.dataset.time = slot.time;
+                        // Check if this time slot is in the past (only for today)
+                        let isPastTimeSlot = false;
+                        if (dateStr === new Date().toISOString().split('T')[0]) { // If today
+                            // Get the current Chicago time as Date object
+                            const chicagoNow = getChicagoDate();
+                            
+                            // Get the current Chicago hour and minute
+                            const currentChicagoHour = chicagoNow.getHours();
+                            const currentChicagoMinute = chicagoNow.getMinutes();
+                            
+                            // Get slot hour and minute
+                            const [slotHour, slotMinute] = slot.time.split(':').map(Number);
+                            
+                            // Compare hours and minutes directly
+                            if (slotHour < currentChicagoHour || 
+                                (slotHour === currentChicagoHour && slotMinute <= currentChicagoMinute)) {
+                                isPastTimeSlot = true;
+                            }
+                            
+                            console.log(`Slot: ${slotHour}:${slotMinute}, Current Chicago time: ${currentChicagoHour}:${currentChicagoMinute}, Is past: ${isPastTimeSlot}`);
+                        }
                         
-                        if (!isBooked) {
+                        const slotElement = document.createElement('div');
+                        
+                        // Determine the proper class based on booking status and past time status
+                        if (isPastTimeSlot) {
+                            slotElement.className = 'time-slot unavailable';
+                            slotElement.title = 'This time slot has already passed';
+                            slotElement.style.backgroundColor = '#f5f5f5';
+                            slotElement.style.color = '#ccc';
+                            slotElement.style.cursor = 'not-allowed';
+                            slotElement.style.borderColor = '#ddd';
+                        } else if (isBooked) {
+                            slotElement.className = 'time-slot unavailable';
+                            slotElement.title = 'This time slot is already booked';
+                            slotElement.style.cursor = 'not-allowed';
+                            slotElement.style.backgroundColor = '#f3f4f6';
+                            slotElement.style.color = '#9ca3af';
+                        } else {
+                            slotElement.className = 'time-slot available';
                             slotElement.addEventListener('click', function() {
                                 if (selectedTimeSlot) {
                                     selectedTimeSlot.classList.remove('selected');
@@ -805,12 +845,10 @@
                                 this.classList.add('selected');
                                 selectedTimeSlot = this;
                             });
-                        } else {
-                            slotElement.title = 'This time slot is already booked';
-                            slotElement.style.cursor = 'not-allowed';
-                            slotElement.style.backgroundColor = '#f3f4f6';
-                            slotElement.style.color = '#9ca3af';
                         }
+                        
+                        slotElement.textContent = slot.display;
+                        slotElement.dataset.time = slot.time;
                         
                         timeSlotList.appendChild(slotElement);
                     });

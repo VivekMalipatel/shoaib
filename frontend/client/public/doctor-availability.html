@@ -389,10 +389,15 @@
             
             // Track time slots for the selected date
             let timeSlots = [];
-            const defaultTimeSlots = Array.from({ length: 12 }, (_, i) => ({
-                time: `${i + 8}:00`,
-                isAvailable: false
-            }));
+            // Create time slots in 30-minute intervals from 8:00 AM to 7:30 PM
+            const defaultTimeSlots = Array.from({ length: 24 }, (_, i) => {
+                const hour = Math.floor(i / 2) + 8;
+                const minutes = i % 2 === 0 ? '00' : '30';
+                return {
+                    time: `${hour}:${minutes}`,
+                    isAvailable: false
+                };
+            });
 
             // Initialize calendar
             updateCalendar();
@@ -463,29 +468,54 @@
                 // Find the earliest and latest available time slots
                 let startHour = 24;
                 let endHour = 0;
+                let startMinute = 0;
+                let endMinute = 0;
                 let anySlotAvailable = false;
                 
                 timeSlots.forEach(slot => {
                     if (slot.isAvailable) {
                         anySlotAvailable = true;
-                        const hour = parseInt(slot.time.split(':')[0]);
-                        startHour = Math.min(startHour, hour);
-                        endHour = Math.max(endHour, hour + 1); // +1 because end time is exclusive
+                        const [hourStr, minuteStr] = slot.time.split(':');
+                        const hour = parseInt(hourStr);
+                        const minute = parseInt(minuteStr);
+                        
+                        if (hour < startHour || (hour === startHour && minute < startMinute)) {
+                            startHour = hour;
+                            startMinute = minute;
+                        }
+                        
+                        if (hour > endHour || (hour === endHour && minute > endMinute)) {
+                            endHour = hour;
+                            endMinute = minute;
+                            // Add 30 minutes to the end time (unless it's already at :30)
+                            if (endMinute === 0) {
+                                endMinute = 30;
+                            } else {
+                                endHour += 1;
+                                endMinute = 0;
+                            }
+                        }
                     }
                 });
                 
                 // If no slots are available, use default range but mark as unavailable
                 if (!anySlotAvailable) {
                     startHour = 9;
+                    startMinute = 0;
                     endHour = 17;
+                    endMinute = 0;
                 }
+                
+                // Format times in HH:MM format
+                const startTime = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
+                const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
                 
                 // Create availability data object
                 const availabilityData = {
                     dayOfWeek: dayOfWeek,
                     date: formattedDate,  // Add specific date
-                    startTime: `${startHour.toString().padStart(2, '0')}:00`,
-                    endTime: `${endHour.toString().padStart(2, '0')}:00`,
+                    startTime: startTime,
+                    endTime: endTime,
                     isAvailable: anySlotAvailable
                 };
                 
@@ -598,6 +628,10 @@
                     calendarDays.appendChild(emptyDay);
                 }
                 
+                // Current date for comparison (to disable past dates)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparisons
+                
                 // Add days of the month
                 for (let i = 1; i <= daysInMonth; i++) {
                     const dayElement = document.createElement('div');
@@ -605,6 +639,10 @@
                     dayElement.textContent = i;
                     
                     const dayDate = new Date(currentYear, currentMonth, i);
+                    dayDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparisons
+                    
+                    // Check if this day is in the past
+                    const isPastDate = dayDate < today;
                     
                     // Check if this day is today
                     if (isToday(dayDate)) {
@@ -616,14 +654,22 @@
                         dayElement.classList.add('selected');
                     }
                     
-                    // Add click event
-                    dayElement.addEventListener('click', function() {
-                        document.querySelectorAll('.calendar-day.selected').forEach(el => el.classList.remove('selected'));
-                        dayElement.classList.add('selected');
-                        selectedDate = dayDate;
-                        updateSelectedDate();
-                        loadTimeSlots();
-                    });
+                    // Disable past dates
+                    if (isPastDate) {
+                        dayElement.classList.add('disabled');
+                        dayElement.style.color = '#ccc';
+                        dayElement.style.cursor = 'not-allowed';
+                        dayElement.style.backgroundColor = '#f5f5f5';
+                    } else {
+                        // Add click event only for current and future dates
+                        dayElement.addEventListener('click', function() {
+                            document.querySelectorAll('.calendar-day.selected').forEach(el => el.classList.remove('selected'));
+                            dayElement.classList.add('selected');
+                            selectedDate = dayDate;
+                            updateSelectedDate();
+                            loadTimeSlots();
+                        });
+                    }
                     
                     calendarDays.appendChild(dayElement);
                 }
@@ -681,22 +727,39 @@
                             dayAvailability = availabilities.find(a => a.dayOfWeek === dayOfWeek && !a.date);
                         }
                         
-                        // Generate default time slots from 8 AM to 7 PM
-                        timeSlots = Array.from({ length: 12 }, (_, i) => ({
-                            time: `${i + 8}:00`,
-                            isAvailable: false
-                        }));
+                        // Generate default time slots in 30-minute intervals from 8 AM to 7:30 PM
+                        timeSlots = Array.from({ length: 24 }, (_, i) => {
+                            const hour = Math.floor(i / 2) + 8;
+                            const minutes = i % 2 === 0 ? '00' : '30';
+                            return {
+                                time: `${hour}:${minutes}`,
+                                isAvailable: false
+                            };
+                        });
                         
                         // If we have availability data for this day, update slots
                         if (dayAvailability) {
-                            const startHour = parseInt(dayAvailability.startTime.split(':')[0]);
-                            const endHour = parseInt(dayAvailability.endTime.split(':')[0]);
+                            const startTime = dayAvailability.startTime;
+                            const endTime = dayAvailability.endTime;
                             const isAvailable = dayAvailability.isAvailable;
                             
+                            // Parse start and end times
+                            const [startHour, startMinute] = startTime.split(':').map(Number);
+                            const [endHour, endMinute] = endTime.split(':').map(Number);
+                            
                             // Mark slots as available based on the time range
-                            timeSlots.forEach((slot, index) => {
-                                const hour = parseInt(slot.time.split(':')[0]);
-                                if (hour >= startHour && hour < endHour && isAvailable) {
+                            timeSlots.forEach(slot => {
+                                const [slotHour, slotMinute] = slot.time.split(':').map(Number);
+                                
+                                // Convert times to minutes for easier comparison
+                                const slotTimeInMinutes = slotHour * 60 + slotMinute;
+                                const startTimeInMinutes = startHour * 60 + startMinute;
+                                const endTimeInMinutes = endHour * 60 + endMinute;
+                                
+                                // Mark slot as available if it falls within the available time range
+                                if (slotTimeInMinutes >= startTimeInMinutes && 
+                                    slotTimeInMinutes < endTimeInMinutes && 
+                                    isAvailable) {
                                     slot.isAvailable = true;
                                 }
                             });
@@ -715,16 +778,52 @@
                 const slotList = document.getElementById('slot-list');
                 slotList.innerHTML = '';
                 
+                // Get current date and time for comparing past time slots
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+                const isToday = selectedDate && (
+                    selectedDate.getDate() === now.getDate() &&
+                    selectedDate.getMonth() === now.getMonth() &&
+                    selectedDate.getFullYear() === now.getFullYear()
+                );
+                
                 timeSlots.forEach((slot, index) => {
                     const slotElement = document.createElement('div');
-                    slotElement.className = `time-slot ${slot.isAvailable ? 'available' : 'unavailable'}`;
-                    slotElement.textContent = slot.time;
                     
-                    slotElement.addEventListener('click', function() {
-                        timeSlots[index].isAvailable = !timeSlots[index].isAvailable;
-                        slotElement.className = `time-slot ${timeSlots[index].isAvailable ? 'available' : 'unavailable'}`;
-                    });
+                    // Parse the slot time
+                    const [hourStr, minuteStr] = slot.time.split(':');
+                    const slotHour = parseInt(hourStr);
+                    const slotMinute = parseInt(minuteStr);
                     
+                    // Check if this time slot is in the past (only matters for today)
+                    const isPastTimeSlot = isToday && (
+                        slotHour < currentHour || 
+                        (slotHour === currentHour && slotMinute < currentMinute)
+                    );
+                    
+                    // Format time for display (12-hour format)
+                    const displayHour = slotHour % 12 === 0 ? 12 : slotHour % 12;
+                    const ampm = slotHour < 12 ? 'AM' : 'PM';
+                    const displayTime = `${displayHour}:${minuteStr} ${ampm}`;
+                    
+                    // Set appropriate class based on availability and whether the slot is in the past
+                    if (isPastTimeSlot) {
+                        slotElement.className = 'time-slot disabled';
+                        slotElement.style.backgroundColor = '#f5f5f5';
+                        slotElement.style.color = '#ccc';
+                        slotElement.style.cursor = 'not-allowed';
+                        slotElement.style.borderColor = '#ddd';
+                    } else {
+                        slotElement.className = `time-slot ${slot.isAvailable ? 'available' : 'unavailable'}`;
+                        // Add click event only for future time slots
+                        slotElement.addEventListener('click', function() {
+                            timeSlots[index].isAvailable = !timeSlots[index].isAvailable;
+                            slotElement.className = `time-slot ${timeSlots[index].isAvailable ? 'available' : 'unavailable'}`;
+                        });
+                    }
+                    
+                    slotElement.textContent = displayTime;
                     slotList.appendChild(slotElement);
                 });
             }

@@ -228,6 +228,29 @@
             border-top: 1px solid #e5e7eb;
             color: #ef4444;
         }
+        /* New styles for the reschedule modal */
+        .time-slot-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .time-slot {
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .time-slot.selected {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+        }
+        .time-slot.unavailable {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -326,6 +349,54 @@
         </div>
     </div>
 
+    <!-- Modal for rescheduling appointment -->
+    <div id="reschedule-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Reschedule Appointment</h3>
+            <div id="reschedule-form">
+                <p><strong>Doctor:</strong> <span id="reschedule-doctor-name"></span> - <span id="reschedule-specialization"></span></p>
+                <p><strong>Current Date & Time:</strong> <span id="reschedule-current-datetime"></span></p>
+                
+                <div style="margin-top: 1.5rem;">
+                    <h4>Select New Date:</h4>
+                    <select id="reschedule-date">
+                        <option value="">Loading available dates...</option>
+                    </select>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h4>Select New Time:</h4>
+                    <div id="reschedule-time-slots" class="time-slot-list">
+                        <div id="loading-time-slots" style="grid-column: span 3; text-align: center; padding: 1rem;">
+                            Select a date to see available time slots
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h4>Appointment Type:</h4>
+                    <select id="reschedule-type">
+                        <option value="regular-checkup">Regular Checkup</option>
+                        <option value="follow-up">Follow-up</option>
+                        <option value="consultation">Consultation</option>
+                        <option value="urgent-care">Urgent Care</option>
+                    </select>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h4>Notes (optional):</h4>
+                    <textarea id="reschedule-notes" style="width: 100%; height: 80px; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;"></textarea>
+                </div>
+                
+                <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+                    <button id="reschedule-cancel-btn" class="btn btn-secondary">Cancel</button>
+                    <button id="reschedule-submit-btn" class="btn">Reschedule Appointment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Global variables
@@ -333,6 +404,9 @@
             let currentAppointment = null;
             let currentUser = null;
             const token = localStorage.getItem('access_token');
+            let selectedTimeSlot = null;
+            let doctorAvailabilities = [];
+            let currentRescheduleDate = null;
             
             // Check if user is authenticated as a patient - using API_ENDPOINTS
             fetch(API_ENDPOINTS.user, {
@@ -832,15 +906,452 @@
                 }
             });
             
-            // Reschedule appointment
+            // Reschedule appointment - Open our new reschedule modal instead of redirecting
             modalRescheduleBtn.addEventListener('click', function() {
                 if (currentAppointment) {
-                    alert(`Redirecting to reschedule appointment with Dr. ${currentAppointment.doctorName}. This would take you to a booking page.`);
+                    // Hide details modal
                     modal.style.display = 'none';
                     
-                    // In a real app, you would redirect to a booking page with the doctor ID
-                    window.location.href = `/patient-find-doctors.html?reschedule=true&doctor_id=${currentAppointment.doctorId}`;
+                    // Show reschedule modal
+                    openRescheduleModal(currentAppointment);
                 }
+            });
+
+            // Reschedule Modal Functionality
+            const rescheduleModal = document.getElementById('reschedule-modal');
+            const rescheduleCloseModal = rescheduleModal.querySelector('.close-modal');
+            const rescheduleForm = document.getElementById('reschedule-form');
+            const rescheduleCancelBtn = document.getElementById('reschedule-cancel-btn');
+            const rescheduleSubmitBtn = document.getElementById('reschedule-submit-btn');
+            const rescheduleDate = document.getElementById('reschedule-date');
+            
+            // Setup reschedule modal events
+            rescheduleCloseModal.addEventListener('click', function() {
+                rescheduleModal.style.display = 'none';
+            });
+            
+            rescheduleCancelBtn.addEventListener('click', function() {
+                rescheduleModal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', function(event) {
+                if (event.target === rescheduleModal) {
+                    rescheduleModal.style.display = 'none';
+                }
+            });
+            
+            // Date selector change event for reschedule
+            rescheduleDate.addEventListener('change', function() {
+                const selectedDate = this.value;
+                if (selectedDate && currentAppointment) {
+                    loadRescheduleTimeSlots(currentAppointment.doctorId, selectedDate);
+                }
+            });
+            
+            // Open the reschedule modal and initialize it
+            function openRescheduleModal(appointment) {
+                // Reset time slot selection
+                if (selectedTimeSlot) {
+                    selectedTimeSlot.classList.remove('selected');
+                }
+                selectedTimeSlot = null;
+                
+                // Format date for display in Chicago timezone
+                const appointmentDate = new Date(appointment.date);
+                const dateTimeDisplay = formatInChicagoTimezone(appointmentDate, { 
+                    weekday: 'long',
+                    month: 'long', 
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric', 
+                    minute: '2-digit',
+                    hour12: true
+                });
+                
+                // Populate doctor information
+                document.getElementById('reschedule-doctor-name').textContent = appointment.doctorName;
+                document.getElementById('reschedule-specialization').textContent = appointment.doctorSpecialization || 'Specialist';
+                document.getElementById('reschedule-current-datetime').textContent = dateTimeDisplay;
+                
+                // Set the appointment type
+                const typeSelect = document.getElementById('reschedule-type');
+                for (let i = 0; i < typeSelect.options.length; i++) {
+                    if (typeSelect.options[i].value === appointment.type) {
+                        typeSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+                
+                // Set notes if any
+                document.getElementById('reschedule-notes').value = appointment.notes || '';
+                
+                // Reset time slots
+                document.getElementById('reschedule-time-slots').innerHTML = `
+                    <div id="loading-time-slots" style="grid-column: span 3; text-align: center; padding: 1rem;">
+                        Select a date to see available time slots
+                    </div>
+                `;
+                
+                // Load available dates for this doctor
+                loadAvailableDates(appointment.doctorId);
+                
+                // Show modal
+                rescheduleModal.style.display = 'block';
+            }
+            
+            // Load available dates for a doctor
+            function loadAvailableDates(doctorId) {
+                const dateSelect = document.getElementById('reschedule-date');
+                dateSelect.innerHTML = '<option value="">Loading available dates...</option>';
+                
+                fetch(API_BASE_URL + `/api/doctors/${doctorId}/availability`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch doctor availability');
+                    }
+                    return response.json();
+                })
+                .then(availabilities => {
+                    // Store availabilities for later use
+                    doctorAvailabilities = availabilities;
+                    
+                    // Get available dates that have isAvailable=true
+                    const availableDates = [];
+                    
+                    // Current date (today) and upcoming days
+                    const currentDate = new Date();
+                    const nextMonth = new Date(currentDate);
+                    nextMonth.setMonth(currentDate.getMonth() + 1);
+                    
+                    // Check each day for the next 30 days
+                    for (let i = 0; i < 30; i++) {
+                        const checkDate = new Date(currentDate);
+                        checkDate.setDate(currentDate.getDate() + i);
+                        
+                        // Check if this date is available
+                        const dayOfWeek = checkDate.getDay(); // 0-6, Sunday-Saturday
+                        const formattedDate = checkDate.toISOString().split('T')[0]; // YYYY-MM-DD
+                        
+                        // First check for specific date availability
+                        const specificDateAvailability = availabilities.find(a => 
+                            a.date === formattedDate && a.isAvailable
+                        );
+                        
+                        // If no specific date, check for day of week availability
+                        const dayOfWeekAvailability = availabilities.find(a => 
+                            !a.date && a.dayOfWeek === dayOfWeek && a.isAvailable
+                        );
+                        
+                        // If either is available, add this date to options
+                        if (specificDateAvailability || dayOfWeekAvailability) {
+                            availableDates.push({
+                                date: checkDate,
+                                availability: specificDateAvailability || dayOfWeekAvailability
+                            });
+                        }
+                    }
+                    
+                    // Update the date selector
+                    dateSelect.innerHTML = '';
+                    
+                    if (availableDates.length === 0) {
+                        dateSelect.innerHTML = '<option value="">No available dates</option>';
+                        return;
+                    }
+                    
+                    dateSelect.innerHTML = '<option value="">Select a date</option>';
+                    
+                    // Add options for each available date
+                    availableDates.forEach((dateInfo, index) => {
+                        const date = dateInfo.date;
+                        const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+                        
+                        // Format display date
+                        let displayDate;
+                        const todayDate = new Date();
+                        todayDate.setHours(0, 0, 0, 0);
+                        
+                        const tomorrowDate = new Date(todayDate);
+                        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+                        
+                        if (date.toDateString() === todayDate.toDateString()) {
+                            displayDate = `Today (${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})`;
+                        } else if (date.toDateString() === tomorrowDate.toDateString()) {
+                            displayDate = `Tomorrow (${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})`;
+                        } else {
+                            displayDate = date.toLocaleDateString('en-US', { 
+                                weekday: 'long',
+                                month: 'long', 
+                                day: 'numeric',
+                                year: 'numeric'
+                            });
+                        }
+                        
+                        const option = document.createElement('option');
+                        option.value = dateStr;
+                        option.textContent = displayDate;
+                        dateSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading available dates:', error);
+                    dateSelect.innerHTML = '<option value="">Failed to load dates</option>';
+                });
+            }
+            
+            // Load available time slots for rescheduling
+            function loadRescheduleTimeSlots(doctorId, dateStr) {
+                currentRescheduleDate = dateStr;
+                
+                const timeSlotList = document.getElementById('reschedule-time-slots');
+                timeSlotList.innerHTML = `
+                    <div id="loading-time-slots" style="grid-column: span 3; text-align: center; padding: 1rem;">
+                        Loading available time slots...
+                    </div>
+                `;
+                
+                // Find availability for this date
+                const selectedDate = new Date(dateStr);
+                const dayOfWeek = selectedDate.getDay();
+                
+                // First check for specific date availability
+                let dateAvailability = doctorAvailabilities.find(a => a.date === dateStr && a.isAvailable);
+                
+                // If no specific date, check for day of week availability
+                if (!dateAvailability) {
+                    dateAvailability = doctorAvailabilities.find(a => !a.date && a.dayOfWeek === dayOfWeek && a.isAvailable);
+                }
+                
+                if (!dateAvailability) {
+                    timeSlotList.innerHTML = `
+                        <div style="grid-column: span 3; text-align: center; padding: 1rem; color: #ef4444;">
+                            No available time slots for this date.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Get start and end hours from availability
+                const [startHour, startMinute] = dateAvailability.startTime.split(':').map(Number);
+                const [endHour, endMinute] = dateAvailability.endTime.split(':').map(Number);
+                
+                // Calculate start and end times in minutes for easier comparison
+                const startTimeInMinutes = startHour * 60 + startMinute;
+                const endTimeInMinutes = endHour * 60 + endMinute;
+                
+                // Generate time slots in 30-minute increments
+                timeSlotList.innerHTML = '';
+                const timeSlots = [];
+                
+                // Start from the exact start time and go up to end time in 30-minute increments
+                for (let timeInMinutes = startTimeInMinutes; timeInMinutes < endTimeInMinutes; timeInMinutes += 30) {
+                    const hour = Math.floor(timeInMinutes / 60);
+                    const minute = timeInMinutes % 60;
+                    
+                    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    
+                    // Format for display (12-hour clock)
+                    let displayHour = hour % 12;
+                    if (displayHour === 0) displayHour = 12;
+                    const ampm = hour < 12 ? 'AM' : 'PM';
+                    const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+                    
+                    timeSlots.push({ time: timeStr, display: displayTime });
+                }
+                
+                // Check for existing appointments to block out time slots
+                fetch(`${API_BASE_URL}/api/doctor-slots/${doctorId}?date=${dateStr}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        console.error('Error fetching booked slots:', response.statusText);
+                        return []; // Assume no appointments if error
+                    }
+                    return response.json();
+                })
+                .then(bookedSlots => {
+                    // Extract time information from booked slots
+                    const bookedTimes = bookedSlots.map(slot => {
+                        const date = new Date(slot.date);
+                        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    });
+                    
+                    // Add time slots to the UI
+                    timeSlots.forEach(slot => {
+                        const isBooked = bookedTimes.includes(slot.time);
+                        
+                        // Check if this time slot is in the past (only for today)
+                        let isPastTimeSlot = false;
+                        if (dateStr === new Date().toISOString().split('T')[0]) { // If today
+                            // Get the current Chicago time as Date object
+                            const chicagoNow = getChicagoDate();
+                            
+                            // Get the current Chicago hour and minute
+                            const currentChicagoHour = chicagoNow.getHours();
+                            const currentChicagoMinute = chicagoNow.getMinutes();
+                            
+                            // Get slot hour and minute
+                            const [slotHour, slotMinute] = slot.time.split(':').map(Number);
+                            
+                            // Compare hours and minutes directly
+                            if (slotHour < currentChicagoHour || 
+                                (slotHour === currentChicagoHour && slotMinute <= currentChicagoMinute)) {
+                                isPastTimeSlot = true;
+                            }
+                        }
+                        
+                        const slotElement = document.createElement('div');
+                        
+                        // Determine the proper class based on booking status and past time status
+                        if (isPastTimeSlot) {
+                            slotElement.className = 'time-slot unavailable';
+                            slotElement.title = 'This time slot has already passed';
+                            slotElement.style.backgroundColor = '#f5f5f5';
+                            slotElement.style.color = '#ccc';
+                            slotElement.style.cursor = 'not-allowed';
+                            slotElement.style.borderColor = '#ddd';
+                        } else if (isBooked) {
+                            slotElement.className = 'time-slot unavailable';
+                            slotElement.title = 'This time slot is already booked';
+                            slotElement.style.cursor = 'not-allowed';
+                            slotElement.style.backgroundColor = '#f3f4f6';
+                            slotElement.style.color = '#9ca3af';
+                        } else {
+                            slotElement.className = 'time-slot available';
+                            slotElement.addEventListener('click', function() {
+                                if (selectedTimeSlot) {
+                                    selectedTimeSlot.classList.remove('selected');
+                                }
+                                
+                                this.classList.add('selected');
+                                selectedTimeSlot = this;
+                            });
+                        }
+                        
+                        slotElement.textContent = slot.display;
+                        slotElement.dataset.time = slot.time;
+                        
+                        timeSlotList.appendChild(slotElement);
+                    });
+                    
+                    // Add message if no time slots
+                    if (timeSlots.length === 0) {
+                        timeSlotList.innerHTML = `
+                            <div style="grid-column: span 3; text-align: center; padding: 1rem;">
+                                No available time slots for this date.
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking booked appointments:', error);
+                    timeSlotList.innerHTML = `
+                        <div style="grid-column: span 3; text-align: center; padding: 1rem; color: #ef4444;">
+                            Failed to load time slots. Please try again.
+                        </div>
+                    `;
+                });
+            }
+            
+            // Reschedule appointment form submission
+            rescheduleSubmitBtn.addEventListener('click', function() {
+                if (!currentAppointment) {
+                    alert('Error: No appointment selected');
+                    return;
+                }
+                
+                if (!currentRescheduleDate) {
+                    alert('Please select a date');
+                    return;
+                }
+                
+                if (!selectedTimeSlot) {
+                    alert('Please select a time slot');
+                    return;
+                }
+                
+                const appointmentTimeStr = selectedTimeSlot.dataset.time;
+                const appointmentType = document.getElementById('reschedule-type').value;
+                const notes = document.getElementById('reschedule-notes').value;
+                
+                // Combine date and time
+                const [hours, minutes] = appointmentTimeStr.split(':').map(Number);
+                
+                // Create a local date object with the appointment date and time
+                const [year, month, day] = currentRescheduleDate.split('-').map(Number);
+                const localAppointmentDate = new Date(year, month - 1, day, hours, minutes, 0);
+                
+                // Convert to ISO string for the API
+                const appointmentDateISO = localAppointmentDate.toISOString();
+                
+                // First cancel the current appointment
+                fetch(API_ENDPOINTS.updateAppointment(currentAppointment.id), {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        status: 'cancelled'
+                    }),
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to cancel current appointment');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Now create the new appointment
+                    const newAppointmentData = {
+                        doctorId: currentAppointment.doctorId,
+                        date: appointmentDateISO,
+                        type: appointmentType,
+                        notes: notes,
+                        status: 'scheduled'
+                    };
+                    
+                    // Book the new appointment
+                    return fetch(API_ENDPOINTS.createAppointment, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(newAppointmentData),
+                        credentials: 'include'
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to create new appointment');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Close the reschedule modal
+                    rescheduleModal.style.display = 'none';
+                    
+                    // Success message
+                    alert('Appointment rescheduled successfully!');
+                    
+                    // Reload the page to see the updated appointments
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('Error rescheduling appointment:', error);
+                    alert('Failed to reschedule appointment. Please try again.');
+                });
             });
 
             // Logout button handler - using API_ENDPOINTS
