@@ -547,9 +547,12 @@
                 
                 // Categorize appointments
                 const upcomingAppointments = appointments.filter(a => {
-                    // Create date objects with no time component to compare dates only
-                    const appointmentDate = new Date(a.date);
-                    const nowDate = new Date();
+                    // If it's cancelled, it's not upcoming
+                    if (a.status !== 'scheduled') return false;
+                    
+                    // Create Chicago timezone date objects
+                    const appointmentDate = getChicagoDate(new Date(a.date));
+                    const nowDate = getChicagoDate();
                     
                     // Set both to midnight for date comparison only
                     const appointmentDateOnly = new Date(
@@ -566,20 +569,23 @@
                     
                     // If same day, check time
                     if (appointmentDateOnly.getTime() === todayDateOnly.getTime()) {
-                        return appointmentDate > nowDate && a.status === 'scheduled';
+                        return appointmentDate > nowDate;
                     }
                     
                     // Otherwise check if date is in future
-                    return appointmentDateOnly >= todayDateOnly && a.status === 'scheduled';
+                    return appointmentDateOnly >= todayDateOnly;
                 });
                 
                 const pastAppointments = appointments.filter(a => {
                     // If it's completed, it's in the past
                     if (a.status === 'completed') return true;
                     
-                    // Create date objects
-                    const appointmentDate = new Date(a.date);
-                    const nowDate = new Date();
+                    // If it's cancelled, it's not past
+                    if (a.status === 'cancelled') return false;
+                    
+                    // Create Chicago timezone date objects
+                    const appointmentDate = getChicagoDate(new Date(a.date));
+                    const nowDate = getChicagoDate();
                     
                     // Set both to midnight for date comparison only
                     const appointmentDateOnly = new Date(
@@ -656,21 +662,18 @@
                 const list = document.getElementById(listId);
                 
                 // Format date in Chicago timezone
-                const appointmentDate = new Date(appointment.date);
+                const appointmentDate = getChicagoDate(new Date(appointment.date));
                 const today = getChicagoDate();
                 today.setHours(0, 0, 0, 0);
                 
                 const tomorrow = new Date(today);
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 
-                // Format the appointment date using Chicago timezone
-                const appointmentDateInChicago = formatInChicagoTimezone(appointmentDate, {});
-                
                 let dateDisplay;
                 
-                if (new Date(appointmentDateInChicago).toDateString() === today.toDateString()) {
+                if (appointmentDate.toDateString() === today.toDateString()) {
                     dateDisplay = 'Today';
-                } else if (new Date(appointmentDateInChicago).toDateString() === tomorrow.toDateString()) {
+                } else if (appointmentDate.toDateString() === tomorrow.toDateString()) {
                     dateDisplay = 'Tomorrow';
                 } else {
                     dateDisplay = formatInChicagoTimezone(appointmentDate, { 
@@ -680,7 +683,7 @@
                     });
                 }
                 
-                // Format time in Chicago timezone
+                // Format time using Chicago timezone
                 const timeDisplay = formatInChicagoTimezone(appointmentDate, { 
                     hour: 'numeric', 
                     minute: '2-digit',
@@ -1192,21 +1195,21 @@
                         // Check if this time slot is in the past (only for today)
                         let isPastTimeSlot = false;
                         if (dateStr === new Date().toISOString().split('T')[0]) { // If today
-                            // Get the current Chicago time as Date object
+                            // Get the current time in Chicago timezone
                             const chicagoNow = getChicagoDate();
                             
-                            // Get the current Chicago hour and minute
-                            const currentChicagoHour = chicagoNow.getHours();
-                            const currentChicagoMinute = chicagoNow.getMinutes();
-                            
-                            // Get slot hour and minute
+                            // Create a date object for the slot time on the selected date in Chicago timezone
                             const [slotHour, slotMinute] = slot.time.split(':').map(Number);
+                            const slotDate = new Date(dateStr);
+                            slotDate.setHours(slotHour, slotMinute, 0, 0);
                             
-                            // Compare hours and minutes directly
-                            if (slotHour < currentChicagoHour || 
-                                (slotHour === currentChicagoHour && slotMinute <= currentChicagoMinute)) {
-                                isPastTimeSlot = true;
-                            }
+                            // Convert slot date to Chicago timezone for proper comparison
+                            const slotDateChicago = getChicagoDate(slotDate);
+                            
+                            // Compare full date objects to determine if the slot is in the past
+                            isPastTimeSlot = slotDateChicago < chicagoNow;
+                            
+                            console.log(`Slot: ${slotDateChicago.toLocaleTimeString()}, Current Chicago time: ${chicagoNow.toLocaleTimeString()}, Is past: ${isPastTimeSlot}`);
                         }
                         
                         const slotElement = document.createElement('div');

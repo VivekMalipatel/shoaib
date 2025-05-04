@@ -798,8 +798,17 @@
                     
                     // Check if this time slot is in the past (only matters for today)
                     const isPastTimeSlot = isToday && (
-                        slotHour < currentHour || 
-                        (slotHour === currentHour && slotMinute < currentMinute)
+                        // Get current time in Chicago timezone and compare with slot time in Chicago timezone
+                        (() => {
+                            const chicagoNow = getChicagoDate();
+                            
+                            // Create a Chicago date with the proper time to compare
+                            const chicagoDate = getChicagoDate();
+                            chicagoDate.setHours(slotHour, slotMinute, 0, 0);
+                            
+                            // Now compare both dates in the same timezone context
+                            return chicagoDate < chicagoNow;
+                        })()
                     );
                     
                     // Format time for display (12-hour format)
@@ -839,7 +848,7 @@
             // Helper function to check if two dates are the same day
             function isSameDay(date1, date2) {
                 return date1.getDate() === date2.getDate() &&
-                       date1.getMonth() === date2.getMonth() &&
+                       date1.getMonth() === date1.getMonth() &&
                        date1.getFullYear() === date2.getFullYear();
             }
 

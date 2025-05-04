@@ -132,6 +132,24 @@
             border-top: 1px solid #e5e7eb;
             color: #ef4444;
         }
+        /* Scrollable list styles */
+        .scrollable-list {
+            max-height: 300px;
+            overflow-y: auto;
+            /* Add scrollbar styling for better user experience */
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f1f5f9;
+        }
+        .scrollable-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scrollable-list::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .scrollable-list::-webkit-scrollbar-thumb {
+            background-color: #cbd5e0;
+            border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -165,7 +183,7 @@
         <div class="card-grid">
             <div class="card">
                 <h3>Your Appointments</h3>
-                <div class="appointment-list" id="upcoming-appointments">
+                <div class="appointment-list scrollable-list" id="upcoming-appointments">
                     <!-- Loading indicator -->
                     <div id="loading-appointments" style="padding: 1rem; text-align: center;">
                         Loading appointments...
@@ -177,7 +195,7 @@
 
             <div class="card">
                 <h3>Find a Doctor</h3>
-                <div class="doctor-list" id="doctor-list">
+                <div class="doctor-list scrollable-list" id="doctor-list">
                     <!-- Loading indicator -->
                     <div id="loading-doctors" style="padding: 1rem; text-align: center;">
                         Loading doctors...
@@ -263,18 +281,29 @@
                     return response.json();
                 })
                 .then(appointments => {
+                    // Add debugging logs
+                    console.log('All appointments received:', appointments);
+                    
                     // Hide loading indicator
                     if (loadingIndicator) {
                         loadingIndicator.style.display = 'none';
                     }
                     
                     // Filter for upcoming appointments only
-                    const now = new Date();
+                    const now = getChicagoDate();
+                    console.log('Current Chicago date/time for filtering:', now);
                     
                     const upcomingAppointments = appointments.filter(appointment => {
-                        const appointmentDate = new Date(appointment.date);
-                        return appointmentDate > now && appointment.status === 'scheduled';
+                        const appointmentDate = getChicagoDate(new Date(appointment.date));
+                        const isUpcoming = appointmentDate > now && appointment.status === 'scheduled';
+                        console.log('Appointment:', appointment.id, 
+                            'Date:', appointmentDate, 
+                            'Status:', appointment.status, 
+                            'Is upcoming:', isUpcoming);
+                        return isUpcoming;
                     });
+                    
+                    console.log('Filtered upcoming appointments:', upcomingAppointments);
                     
                     // Sort appointments by date
                     upcomingAppointments.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -293,11 +322,11 @@
                     
                     // Add appointments to the list
                     nextAppointments.forEach(appointment => {
-                        const appointmentDate = new Date(appointment.date);
+                        const appointmentDate = getChicagoDate(new Date(appointment.date));
                         
                         // Format date display
                         let dateDisplay;
-                        const today = new Date();
+                        const today = getChicagoDate();
                         today.setHours(0, 0, 0, 0);
                         
                         const tomorrow = new Date(today);
@@ -308,7 +337,7 @@
                         } else if (appointmentDate.toDateString() === tomorrow.toDateString()) {
                             dateDisplay = 'Tomorrow';
                         } else {
-                            dateDisplay = appointmentDate.toLocaleDateString('en-US', { 
+                            dateDisplay = formatInChicagoTimezone(appointmentDate, { 
                                 month: 'long', 
                                 day: 'numeric',
                                 year: 'numeric'
@@ -316,7 +345,7 @@
                         }
                         
                         // Format time
-                        const timeDisplay = appointmentDate.toLocaleTimeString('en-US', { 
+                        const timeDisplay = formatInChicagoTimezone(appointmentDate, { 
                             hour: 'numeric', 
                             minute: '2-digit',
                             hour12: true
@@ -412,7 +441,9 @@
                     const totalAppointments = appointments.length;
                     const completedAppointments = appointments.filter(a => a.status === 'completed').length;
                     const upcomingAppointments = appointments.filter(a => {
-                        return new Date(a.date) > new Date() && a.status === 'scheduled';
+                        const appointmentDate = getChicagoDate(new Date(a.date));
+                        const now = getChicagoDate();
+                        return appointmentDate > now && a.status === 'scheduled';
                     }).length;
                     
                     // Create a summary of doctor specialists seen
@@ -428,7 +459,10 @@
                         <p><strong>Total Appointments:</strong> ${totalAppointments}</p>
                         <p><strong>Completed Visits:</strong> ${completedAppointments}</p>
                         <p><strong>Upcoming Appointments:</strong> ${upcomingAppointments}</p>
-                        <p><strong>Last Updated:</strong> ${new Date().toLocaleString()}</p>
+                        <p><strong>Last Updated:</strong> ${formatInChicagoTimezone(new Date(), {
+                            dateStyle: 'medium',
+                            timeStyle: 'medium'
+                        })}</p>
                     `;
                 })
                 .catch(error => {

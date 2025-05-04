@@ -800,23 +800,20 @@
                         // Check if this time slot is in the past (only for today)
                         let isPastTimeSlot = false;
                         if (dateStr === new Date().toISOString().split('T')[0]) { // If today
-                            // Get the current Chicago time as Date object
+                            // Get the current time in Chicago timezone
                             const chicagoNow = getChicagoDate();
                             
-                            // Get the current Chicago hour and minute
-                            const currentChicagoHour = chicagoNow.getHours();
-                            const currentChicagoMinute = chicagoNow.getMinutes();
-                            
-                            // Get slot hour and minute
+                            // Create a date object for the slot time with Chicago timezone context
                             const [slotHour, slotMinute] = slot.time.split(':').map(Number);
                             
-                            // Compare hours and minutes directly
-                            if (slotHour < currentChicagoHour || 
-                                (slotHour === currentChicagoHour && slotMinute <= currentChicagoMinute)) {
-                                isPastTimeSlot = true;
-                            }
+                            // Create a Chicago date with the proper time to compare 
+                            const chicagoDate = getChicagoDate();
+                            chicagoDate.setHours(slotHour, slotMinute, 0, 0);
                             
-                            console.log(`Slot: ${slotHour}:${slotMinute}, Current Chicago time: ${currentChicagoHour}:${currentChicagoMinute}, Is past: ${isPastTimeSlot}`);
+                            // Now compare both dates in the same timezone context
+                            isPastTimeSlot = chicagoDate < chicagoNow;
+                            
+                            console.log(`Slot: ${chicagoDate.toLocaleTimeString()}, Current Chicago time: ${chicagoNow.toLocaleTimeString()}, Is past: ${isPastTimeSlot}`);
                         }
                         
                         const slotElement = document.createElement('div');

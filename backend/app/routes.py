@@ -11,8 +11,36 @@ from flask_jwt_extended import (
     unset_jwt_cookies
 )
 from datetime import datetime, timedelta
+import pytz  # Add pytz for timezone handling
 
 bp = Blueprint('api', __name__)
+
+# Set Chicago timezone for consistent handling with frontend
+CHICAGO_TZ = pytz.timezone('America/Chicago')
+
+# Helper functions for timezone handling
+def utc_to_chicago(utc_dt):
+    """Convert UTC datetime to Chicago timezone"""
+    if utc_dt.tzinfo is None:
+        utc_dt = pytz.utc.localize(utc_dt)
+    return utc_dt.astimezone(CHICAGO_TZ)
+
+def chicago_to_utc(chicago_dt):
+    """Convert Chicago datetime to UTC timezone"""
+    if chicago_dt.tzinfo is None:
+        chicago_dt = CHICAGO_TZ.localize(chicago_dt)
+    return chicago_dt.astimezone(pytz.utc)
+
+def parse_iso_in_chicago(iso_string):
+    """Parse ISO string assuming it's in Chicago timezone, and convert to UTC for storage"""
+    # Remove 'Z' if present and add Chicago timezone info
+    iso_string = iso_string.replace('Z', '')
+    dt = datetime.fromisoformat(iso_string)
+    # If the datetime has no timezone, assume it's Chicago time
+    if dt.tzinfo is None:
+        dt = CHICAGO_TZ.localize(dt)
+    # Convert to UTC for storage
+    return dt.astimezone(pytz.utc)
 
 # Create a separate blueprint for availability routes
 availability_routes = Blueprint('availability', __name__)
@@ -213,18 +241,32 @@ def add_doctor_availability(doctor_id):
 @jwt_required()
 def create_appointment():
     identity = get_jwt_identity()
-    patient = User.query.get(int(identity))
+    user = User.query.get(int(identity))
     
-    if not patient:
+    if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    if patient.role != 'patient':
-        return jsonify({'error': 'Only patients can book appointments'}), 403
     
     data = request.get_json() or {}
     
     if not all(k in data for k in ('doctorId', 'date', 'type')):
         return jsonify({'error': 'Missing required fields'}), 400
+    
+    # If a doctor is creating the appointment, they need to provide a patientId
+    if user.role == 'doctor':
+        if 'patientId' not in data:
+            return jsonify({'error': 'Doctor must provide a patientId to create appointment'}), 400
+        patient_id = data['patientId']
+        
+        # Verify the patient exists
+        patient = User.query.get(patient_id)
+        if not patient or patient.role != 'patient':
+            return jsonify({'error': 'Patient not found'}), 404
+            
+    elif user.role == 'patient':
+        # Patient is creating their own appointment
+        patient_id = user.id
+    else:
+        return jsonify({'error': 'Only patients and doctors can book appointments'}), 403
     
     # Validate doctor exists
     doctor = User.query.get(data['doctorId'])
@@ -233,14 +275,14 @@ def create_appointment():
     
     # Convert date string to datetime object
     try:
-        appointment_date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
+        appointment_date = parse_iso_in_chicago(data['date'])
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use ISO format'}), 400
     
     # Create new appointment
     appointment = Appointment(
         doctor_id=data['doctorId'],
-        patient_id=patient.id,
+        patient_id=patient_id,
         date=appointment_date,
         duration=data.get('duration', 30),
         type=data['type'],
@@ -327,7 +369,7 @@ def update_appointment(appointment_id):
     if appointment.status == 'scheduled':
         if 'date' in data:
             try:
-                appointment.date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
+                appointment.date = parse_iso_in_chicago(data['date'])
             except ValueError:
                 return jsonify({'error': 'Invalid date format. Use ISO format'}), 400
         
@@ -439,11 +481,26 @@ def get_doctor_booked_slots(doctor_id):
     # Apply date filter if provided
     if date_filter:
         try:
+            # Parse the date in Chicago timezone
             filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
-            # Filter appointments for the specific date
+            
+            # Create datetime objects representing the start and end of the day in Chicago timezone
+            # These will be converted to UTC for the database query
+            start_datetime = CHICAGO_TZ.localize(
+                datetime.combine(filter_date, datetime.min.time())
+            )
+            end_datetime = CHICAGO_TZ.localize(
+                datetime.combine(filter_date + timedelta(days=1), datetime.min.time())
+            )
+            
+            # Convert to UTC for the database query
+            start_datetime_utc = start_datetime.astimezone(pytz.utc)
+            end_datetime_utc = end_datetime.astimezone(pytz.utc)
+            
+            # Filter appointments for the specific date in UTC
             query = query.filter(
-                Appointment.date >= datetime.combine(filter_date, datetime.min.time()),
-                Appointment.date < datetime.combine(filter_date + timedelta(days=1), datetime.min.time())
+                Appointment.date >= start_datetime_utc,
+                Appointment.date < end_datetime_utc
             )
         except ValueError:
             return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
@@ -453,8 +510,12 @@ def get_doctor_booked_slots(doctor_id):
     # Return only time slot information, no personal data
     slots = []
     for appointment in appointments:
+        # Get the date in Chicago timezone
+        utc_date = pytz.utc.localize(appointment.date) if appointment.date.tzinfo is None else appointment.date
+        chicago_date = utc_date.astimezone(CHICAGO_TZ)
+        
         slots.append({
-            'date': appointment.date.isoformat(),
+            'date': chicago_date.isoformat(),
             'status': appointment.status
         })
     

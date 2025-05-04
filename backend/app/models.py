@@ -113,11 +113,18 @@ class Appointment(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):
+        import pytz
+        
+        # Convert UTC date to Chicago timezone for consistent handling with frontend
+        chicago_tz = pytz.timezone('America/Chicago')
+        utc_date = pytz.utc.localize(self.date) if self.date.tzinfo is None else self.date
+        chicago_date = utc_date.astimezone(chicago_tz)
+        
         return {
             'id': self.id,
             'patientId': self.patient_id,
             'doctorId': self.doctor_id,
-            'date': self.date.isoformat(),
+            'date': chicago_date.isoformat(),
             'duration': self.duration,
             'type': self.type,
             'status': self.status,

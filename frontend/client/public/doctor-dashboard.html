@@ -122,6 +122,24 @@
             border-top: 1px solid #e5e7eb;
             color: #ef4444;
         }
+        /* Scrollable list styles */
+        .scrollable-list {
+            max-height: 300px;
+            overflow-y: auto;
+            /* Add scrollbar styling for better user experience */
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f1f5f9;
+        }
+        .scrollable-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scrollable-list::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .scrollable-list::-webkit-scrollbar-thumb {
+            background-color: #cbd5e0;
+            border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -155,7 +173,7 @@
         <div class="card-grid">
             <div class="card">
                 <h3>Today's Appointments</h3>
-                <div class="appointment-list" id="today-appointments">
+                <div class="appointment-list scrollable-list" id="today-appointments">
                     <!-- Loading indicator -->
                     <div id="loading-appointments" style="padding: 1rem; text-align: center;">
                         Loading appointments...
@@ -250,11 +268,11 @@
                     }
                     
                     // Filter for today's appointments only
-                    const today = new Date();
+                    const today = getChicagoDate();
                     today.setHours(0, 0, 0, 0);
                     
                     const todayAppointments = appointments.filter(appointment => {
-                        const appointmentDate = new Date(appointment.date);
+                        const appointmentDate = getChicagoDate(new Date(appointment.date));
                         appointmentDate.setHours(0, 0, 0, 0);
                         return appointmentDate.getTime() === today.getTime() && appointment.status === 'scheduled';
                     });
@@ -273,8 +291,8 @@
                     
                     // Add appointments to the list
                     todayAppointments.forEach(appointment => {
-                        const appointmentDate = new Date(appointment.date);
-                        const timeStr = appointmentDate.toLocaleTimeString('en-US', { 
+                        const appointmentDate = getChicagoDate(new Date(appointment.date));
+                        const timeStr = formatInChicagoTimezone(appointmentDate, { 
                             hour: 'numeric', 
                             minute: '2-digit',
                             hour12: true 
@@ -321,11 +339,11 @@
                     });
                     
                     // Count upcoming appointments
-                    const today = new Date();
+                    const today = getChicagoDate();
                     today.setHours(0, 0, 0, 0);
                     
                     const upcomingAppointments = appointments.filter(appointment => {
-                        const appointmentDate = new Date(appointment.date);
+                        const appointmentDate = getChicagoDate(new Date(appointment.date));
                         return appointmentDate >= today && appointment.status === 'scheduled';
                     });
                     
@@ -333,7 +351,10 @@
                     patientSummary.innerHTML = `
                         <p><strong>Total Patients:</strong> ${patientIds.size}</p>
                         <p><strong>Upcoming Appointments:</strong> ${upcomingAppointments.length}</p>
-                        <p><strong>Last Updated:</strong> ${new Date().toLocaleString()}</p>
+                        <p><strong>Last Updated:</strong> ${formatInChicagoTimezone(new Date(), {
+                            dateStyle: 'medium',
+                            timeStyle: 'medium'
+                        })}</p>
                     `;
                 })
                 .catch(error => {
