@@ -759,7 +759,8 @@
                 const timeSlots = [];
                 
                 // Start from the exact start time and go up to end time in 30-minute increments
-                for (let timeInMinutes = startTimeInMinutes; timeInMinutes < endTimeInMinutes; timeInMinutes += 30) {
+                // Generate slots up to endTime minus 30min to avoid an extra slot
+                for (let timeInMinutes = startTimeInMinutes; timeInMinutes + 30 <= endTimeInMinutes; timeInMinutes += 30) {
                     const hour = Math.floor(timeInMinutes / 60);
                     const minute = timeInMinutes % 60;
                     
@@ -791,11 +792,11 @@
                 .then(bookedSlots => {
                     console.log('Fetched booked slots:', bookedSlots);
                     
-                    // Extract time information from booked slots
-                    const bookedTimes = bookedSlots.map(slot => {
-                        const date = new Date(slot.date);
-                        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-                    });
+                    // Extract time information only for bookings on the selected date
+                    const bookedTimes = bookedSlots
+                        .map(slot => getChicagoDate(new Date(slot.date)))
+                        .filter(chicagoDt => chicagoDt.toISOString().split('T')[0] === dateStr)
+                        .map(chicagoDt => `${chicagoDt.getHours().toString().padStart(2,'0')}:${chicagoDt.getMinutes().toString().padStart(2,'0')}`);
                     
                     console.log('Booked times for selected date:', bookedTimes);
                     
@@ -949,22 +950,20 @@
                 const appointmentType = document.getElementById('appointment-type').value;
                 const notes = document.getElementById('appointment-notes').value;
                 
-                // Combine date and time
+                // Combine date and time into a JS Date, then normalize to Chicago timezone
                 const [hours, minutes] = appointmentTimeStr.split(':').map(Number);
-                
-                // Create a local date object with the appointment date and time
                 const [year, month, day] = currentAppointmentDate.split('-').map(Number);
-                // Build Chicago time date for booking
-                const appointmentChicago = getChicagoDate();
-                appointmentChicago.setFullYear(year, month - 1, day, hours, minutes, 0, 0);
-                const appointmentDateISO = appointmentChicago.toISOString();
+                // Construct an ISO string for the selected slot
+                const isoLocal = `${year.toString().padStart(4,'0')}-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}T${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:00`;
+                const chicagoDate = getChicagoDate(new Date(isoLocal));
+                const appointmentDateISO = chicagoDate.toISOString();
                 
                 console.log('Booking appointment in Chicago timezone:', {
                     selectedDate: currentAppointmentDate,
                     time: appointmentTimeStr,
-                    localDate: appointmentChicago.toString(),
+                    localDate: chicagoDate.toString(),
                     isoDate: appointmentDateISO,
-                    chicagoTime: formatInChicagoTimezone(appointmentChicago, {
+                    chicagoTime: formatInChicagoTimezone(chicagoDate, {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
@@ -1018,8 +1017,8 @@
                     alert('Appointment booked successfully!');
                     modal.style.display = 'none';
                     
-                    // Refresh the current page to get updated availability
-                    window.location.reload();
+                    // Refresh available time slots for the selected date
+                    loadAvailableTimeSlots(currentAppointmentDate);
                 })
                 .catch(error => {
                     console.error('Error booking appointment:', error);
