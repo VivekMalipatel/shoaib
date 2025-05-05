@@ -200,7 +200,17 @@
                     handleLogin();
                 });
             }
-            
+
+            // Clear tokens when navigating to the registration page
+            const registerLink = document.querySelector('.form-link a[href="/register.html"]');
+            if (registerLink) {
+                registerLink.addEventListener('click', function() {
+                    console.log('Register link clicked - clearing tokens');
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                });
+            }
+
             // Handle the login process
             function handleLogin() {
                 console.log('Handling login');

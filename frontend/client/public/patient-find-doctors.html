@@ -807,7 +807,9 @@
                         // Check if this time slot is in the past by comparing full Chicago date-times
                         const slotDateTimeChicago = getChicagoDate(new Date(`${dateStr}T${slot.time}:00`));
                         const nowChicago = getChicagoDate();
-                        let isPastTimeSlot = slotDateTimeChicago <= nowChicago;
+                        const isPastTimeSlot = slotDateTimeChicago <= nowChicago;
+                        
+                        console.log(`Slot: ${slot.time}, Date: ${dateStr}, Chicago Time: ${slotDateTimeChicago}, Now: ${nowChicago}, Is Past: ${isPastTimeSlot}, Is Booked: ${isBooked}`);
                         
                         const slotElement = document.createElement('div');
                         
@@ -950,20 +952,24 @@
                 const appointmentType = document.getElementById('appointment-type').value;
                 const notes = document.getElementById('appointment-notes').value;
                 
-                // Combine date and time into a JS Date, then normalize to Chicago timezone
+                // To properly construct an appointment date:
+                // 1. Parse the selected date components
                 const [hours, minutes] = appointmentTimeStr.split(':').map(Number);
                 const [year, month, day] = currentAppointmentDate.split('-').map(Number);
-                // Construct an ISO string for the selected slot
-                const isoLocal = `${year.toString().padStart(4,'0')}-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}T${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:00`;
-                const chicagoDate = getChicagoDate(new Date(isoLocal));
-                const appointmentDateISO = chicagoDate.toISOString();
+                
+                // 2. We need to create an ISO string that preserves Chicago timezone context
+                // Format directly as an ISO string with timezone info
+                const appointmentDateISO = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00-05:00`;
+
+                // Create a reference to the Chicago date for display/logging purposes
+                const chicagoDisplayDate = new Date(year, month-1, day, hours, minutes);
                 
                 console.log('Booking appointment in Chicago timezone:', {
                     selectedDate: currentAppointmentDate,
                     time: appointmentTimeStr,
-                    localDate: chicagoDate.toString(),
+                    localDate: chicagoDisplayDate.toString(),
                     isoDate: appointmentDateISO,
-                    chicagoTime: formatInChicagoTimezone(chicagoDate, {
+                    chicagoTime: formatInChicagoTimezone(chicagoDisplayDate, {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
@@ -982,20 +988,7 @@
                     status: 'scheduled'
                 };
                 
-                console.log('Booking appointment in Chicago timezone:', {
-                    selectedDate: currentAppointmentDate,
-                    time: appointmentTimeStr,
-                    isoDate: appointmentDateISO,
-                    chicagoTime: formatInChicagoTimezone(new Date(appointmentDateISO), {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true,
-                    })
-                });
+                console.log('Submitting appointment data to server:', appointmentData);
                 
                 // Send appointment data to server
                 fetch(API_ENDPOINTS.createAppointment, {

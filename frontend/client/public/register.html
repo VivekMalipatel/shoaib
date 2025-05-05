@@ -218,26 +218,6 @@
     <script src="/js/api-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Check if user is already logged in
-            fetch('/api/user')
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    }
-                    throw new Error('Not authenticated');
-                })
-                .then(user => {
-                    // User is logged in, redirect to appropriate dashboard
-                    if (user.role === 'doctor') {
-                        window.location.href = '/doctor-dashboard.html';
-                    } else {
-                        window.location.href = '/patient-dashboard.html';
-                    }
-                })
-                .catch(error => {
-                    console.log('User not authenticated, showing register form');
-                });
-            
             // Form elements
             const form = document.getElementById('register-form');
             const roleSelect = document.getElementById('role');
@@ -406,7 +386,7 @@
                 }
                 
                 // Send registration request
-                fetch('/api/register', {
+                fetch(API_ENDPOINTS.register, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData),
@@ -422,6 +402,12 @@
                 })
                 .then(userData => {
                     console.log('Registration successful:', userData);
+                    // Store tokens from registration response
+                    if (userData.access_token) {
+                        localStorage.setItem('access_token', userData.access_token);
+                        localStorage.setItem('refresh_token', userData.refresh_token);
+                        console.log('Saved access and refresh tokens from registration');
+                    }
                     
                     // Redirect based on user role
                     if (userData.role === 'doctor') {
