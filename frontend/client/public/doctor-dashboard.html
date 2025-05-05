@@ -277,8 +277,8 @@
                         return appointmentDate.getTime() === today.getTime() && appointment.status === 'scheduled';
                     });
                     
-                    // Sort appointments by time
-                    todayAppointments.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    // Sort appointments by time in Chicago timezone
+                    todayAppointments.sort((a, b) => getChicagoDate(new Date(a.date)) - getChicagoDate(new Date(b.date)));
                     
                     // If no appointments today, show message
                     if (todayAppointments.length === 0) {
@@ -351,7 +351,7 @@
                     patientSummary.innerHTML = `
                         <p><strong>Total Patients:</strong> ${patientIds.size}</p>
                         <p><strong>Upcoming Appointments:</strong> ${upcomingAppointments.length}</p>
-                        <p><strong>Last Updated:</strong> ${formatInChicagoTimezone(new Date(), {
+                        <p><strong>Last Updated:</strong> ${formatInChicagoTimezone(getChicagoDate(), {
                             dateStyle: 'medium',
                             timeStyle: 'medium'
                         })}</p>

@@ -336,7 +336,8 @@
             let currentUser = null;
             
             // Date formatting helpers
-            const today = new Date();
+            // Today in Chicago timezone
+            const today = getChicagoDate();
             const dateOptions = { 
                 weekday: 'long',
                 year: 'numeric', 
@@ -627,10 +628,9 @@
                     // Get available dates that have isAvailable=true
                     const availableDates = [];
                     
-                    // Current date (today) and upcoming days
-                    const currentDate = new Date(); // April 10, 2025
-                    const nextMonth = new Date(currentDate);
-                    nextMonth.setMonth(currentDate.getMonth() + 1);
+                    // Current date (today) in Chicago timezone and reset to start of day
+                    const currentDate = getChicagoDate();
+                    currentDate.setHours(0, 0, 0, 0);
                     
                     // Check each day for the next 30 days
                     for (let i = 0; i < 30; i++) {
@@ -641,22 +641,28 @@
                         const dayOfWeek = checkDate.getDay(); // 0-6, Sunday-Saturday
                         const formattedDate = checkDate.toISOString().split('T')[0]; // YYYY-MM-DD
                         
-                        // First check for specific date availability
-                        const specificDateAvailability = availabilities.find(a => 
-                            a.date === formattedDate && a.isAvailable
-                        );
+                        // Check for a specific date entry
+                        const specificDateEntry = availabilities.find(a => a.date === formattedDate);
                         
-                        // If no specific date, check for day of week availability
-                        const dayOfWeekAvailability = availabilities.find(a => 
-                            !a.date && a.dayOfWeek === dayOfWeek && a.isAvailable
-                        );
-                        
-                        // If either is available, add this date to options
-                        if (specificDateAvailability || dayOfWeekAvailability) {
+                        // If specific date exists and is available, use it
+                        if (specificDateEntry && specificDateEntry.isAvailable) {
                             availableDates.push({
                                 date: checkDate,
-                                availability: specificDateAvailability || dayOfWeekAvailability
+                                availability: specificDateEntry
                             });
+                        }
+                        // If no specific date entry or it's not marked as available, check day of week
+                        else if (!specificDateEntry) {
+                            const dayOfWeekAvailability = availabilities.find(a => 
+                                !a.date && a.dayOfWeek === dayOfWeek && a.isAvailable
+                            );
+                            
+                            if (dayOfWeekAvailability) {
+                                availableDates.push({
+                                    date: checkDate,
+                                    availability: dayOfWeekAvailability
+                                });
+                            }
                         }
                     }
                     
@@ -682,11 +688,11 @@
                         tomorrowDate.setDate(tomorrowDate.getDate() + 1);
                         
                         if (date.toDateString() === todayDate.toDateString()) {
-                            displayDate = `Today (${date.toLocaleDateString('en-US', dateOptions)})`;
+                            displayDate = `Today (${formatInChicagoTimezone(date, dateOptions)})`;
                         } else if (date.toDateString() === tomorrowDate.toDateString()) {
-                            displayDate = `Tomorrow (${date.toLocaleDateString('en-US', dateOptions)})`;
+                            displayDate = `Tomorrow (${formatInChicagoTimezone(date, dateOptions)})`;
                         } else {
-                            displayDate = date.toLocaleDateString('en-US', dateOptions);
+                            displayDate = formatInChicagoTimezone(date, dateOptions);
                         }
                         
                         const option = document.createElement('option');
@@ -797,24 +803,10 @@
                     timeSlots.forEach(slot => {
                         const isBooked = bookedTimes.includes(slot.time);
                         
-                        // Check if this time slot is in the past (only for today)
-                        let isPastTimeSlot = false;
-                        if (dateStr === new Date().toISOString().split('T')[0]) { // If today
-                            // Get the current time in Chicago timezone
-                            const chicagoNow = getChicagoDate();
-                            
-                            // Create a date object for the slot time with Chicago timezone context
-                            const [slotHour, slotMinute] = slot.time.split(':').map(Number);
-                            
-                            // Create a Chicago date with the proper time to compare 
-                            const chicagoDate = getChicagoDate();
-                            chicagoDate.setHours(slotHour, slotMinute, 0, 0);
-                            
-                            // Now compare both dates in the same timezone context
-                            isPastTimeSlot = chicagoDate < chicagoNow;
-                            
-                            console.log(`Slot: ${chicagoDate.toLocaleTimeString()}, Current Chicago time: ${chicagoNow.toLocaleTimeString()}, Is past: ${isPastTimeSlot}`);
-                        }
+                        // Check if this time slot is in the past by comparing full Chicago date-times
+                        const slotDateTimeChicago = getChicagoDate(new Date(`${dateStr}T${slot.time}:00`));
+                        const nowChicago = getChicagoDate();
+                        let isPastTimeSlot = slotDateTimeChicago <= nowChicago;
                         
                         const slotElement = document.createElement('div');
                         
@@ -962,17 +954,17 @@
                 
                 // Create a local date object with the appointment date and time
                 const [year, month, day] = currentAppointmentDate.split('-').map(Number);
-                const localAppointmentDate = new Date(year, month - 1, day, hours, minutes, 0);
-                
-                // Convert to ISO string for the API
-                const appointmentDateISO = localAppointmentDate.toISOString();
+                // Build Chicago time date for booking
+                const appointmentChicago = getChicagoDate();
+                appointmentChicago.setFullYear(year, month - 1, day, hours, minutes, 0, 0);
+                const appointmentDateISO = appointmentChicago.toISOString();
                 
                 console.log('Booking appointment in Chicago timezone:', {
                     selectedDate: currentAppointmentDate,
                     time: appointmentTimeStr,
-                    localDate: localAppointmentDate.toString(),
+                    localDate: appointmentChicago.toString(),
                     isoDate: appointmentDateISO,
-                    chicagoTime: formatInChicagoTimezone(localAppointmentDate, {
+                    chicagoTime: formatInChicagoTimezone(appointmentChicago, {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',

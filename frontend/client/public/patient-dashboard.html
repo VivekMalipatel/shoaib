@@ -305,8 +305,8 @@
                     
                     console.log('Filtered upcoming appointments:', upcomingAppointments);
                     
-                    // Sort appointments by date
-                    upcomingAppointments.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    // Sort upcoming by Chicago date/time
+                    upcomingAppointments.sort((a, b) => getChicagoDate(new Date(a.date)) - getChicagoDate(new Date(b.date)));
                     
                     // Limit to 3 most recent
                     const nextAppointments = upcomingAppointments.slice(0, 3);
@@ -329,6 +329,7 @@
                         const today = getChicagoDate();
                         today.setHours(0, 0, 0, 0);
                         
+                        // Chicago tomorrow
                         const tomorrow = new Date(today);
                         tomorrow.setDate(tomorrow.getDate() + 1);
                         
@@ -459,7 +460,7 @@
                         <p><strong>Total Appointments:</strong> ${totalAppointments}</p>
                         <p><strong>Completed Visits:</strong> ${completedAppointments}</p>
                         <p><strong>Upcoming Appointments:</strong> ${upcomingAppointments}</p>
-                        <p><strong>Last Updated:</strong> ${formatInChicagoTimezone(new Date(), {
+                        <p><strong>Last Updated:</strong> ${formatInChicagoTimezone(getChicagoDate(), {
                             dateStyle: 'medium',
                             timeStyle: 'medium'
                         })}</p>

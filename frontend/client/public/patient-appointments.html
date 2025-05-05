@@ -494,8 +494,8 @@
                     // Store appointments
                     currentAppointments = appointments;
                     
-                    // Sort by date (latest first)
-                    currentAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    // Sort by Chicago date (most recent first)
+                    currentAppointments.sort((a, b) => getChicagoDate(new Date(b.date)) - getChicagoDate(new Date(a.date)));
                     
                     // Categorize and display appointments
                     displayAppointments(currentAppointments);
@@ -543,7 +543,8 @@
                     return;
                 }
                 
-                const now = new Date();
+                // Current time in Chicago timezone for accurate past/upcoming checks
+                const now = getChicagoDate();
                 
                 // Categorize appointments
                 const upcomingAppointments = appointments.filter(a => {
@@ -1040,22 +1041,28 @@
                         const dayOfWeek = checkDate.getDay(); // 0-6, Sunday-Saturday
                         const formattedDate = checkDate.toISOString().split('T')[0]; // YYYY-MM-DD
                         
-                        // First check for specific date availability
-                        const specificDateAvailability = availabilities.find(a => 
-                            a.date === formattedDate && a.isAvailable
-                        );
+                        // Check for a specific date entry
+                        const specificDateEntry = availabilities.find(a => a.date === formattedDate);
                         
-                        // If no specific date, check for day of week availability
-                        const dayOfWeekAvailability = availabilities.find(a => 
-                            !a.date && a.dayOfWeek === dayOfWeek && a.isAvailable
-                        );
-                        
-                        // If either is available, add this date to options
-                        if (specificDateAvailability || dayOfWeekAvailability) {
+                        // If specific date exists and is available, use it
+                        if (specificDateEntry && specificDateEntry.isAvailable) {
                             availableDates.push({
                                 date: checkDate,
-                                availability: specificDateAvailability || dayOfWeekAvailability
+                                availability: specificDateEntry
                             });
+                        }
+                        // If no specific date entry or it's not marked as available, check day of week
+                        else if (!specificDateEntry) {
+                            const dayOfWeekAvailability = availabilities.find(a => 
+                                !a.date && a.dayOfWeek === dayOfWeek && a.isAvailable
+                            );
+                            
+                            if (dayOfWeekAvailability) {
+                                availableDates.push({
+                                    date: checkDate,
+                                    availability: dayOfWeekAvailability
+                                });
+                            }
                         }
                     }
                     
@@ -1210,6 +1217,15 @@
                             isPastTimeSlot = slotDateChicago < chicagoNow;
                             
                             console.log(`Slot: ${slotDateChicago.toLocaleTimeString()}, Current Chicago time: ${chicagoNow.toLocaleTimeString()}, Is past: ${isPastTimeSlot}`);
+                        } else {
+                            // If not today, check if the date is in the past
+                            const selectedDateObj = new Date(dateStr);
+                            const todayInChicago = getChicagoDate();
+                            todayInChicago.setHours(0, 0, 0, 0); // Reset to start of day
+                            selectedDateObj.setHours(0, 0, 0, 0); // Reset to start of day
+                            
+                            // If the date is before today, all slots are in the past
+                            isPastTimeSlot = selectedDateObj < todayInChicago;
                         }
                         
                         const slotElement = document.createElement('div');

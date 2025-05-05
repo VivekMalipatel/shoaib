@@ -382,7 +382,8 @@
             });
 
             // Calendar implementation
-            let currentDate = new Date();
+            // Initialize current date in Chicago timezone
+            let currentDate = getChicagoDate();
             let selectedDate = null;
             let currentMonth = currentDate.getMonth();
             let currentYear = currentDate.getFullYear();
@@ -619,7 +620,7 @@
                 const calendarDays = document.getElementById('calendar-days');
                 calendarDays.innerHTML = '';
                 
-                const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+                const firstDay = getChicagoDate(new Date(currentYear, currentMonth, 1)).getDay();
                 const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
                 
                 // Add empty cells for days before the first day of the month
@@ -629,8 +630,8 @@
                 }
                 
                 // Current date for comparison (to disable past dates)
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparisons
+                const today = getChicagoDate();
+                today.setHours(0, 0, 0, 0);
                 
                 // Add days of the month
                 for (let i = 1; i <= daysInMonth; i++) {
@@ -639,7 +640,7 @@
                     dayElement.textContent = i;
                     
                     const dayDate = new Date(currentYear, currentMonth, i);
-                    dayDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparisons
+                    dayDate.setHours(0, 0, 0, 0);
                     
                     // Check if this day is in the past
                     const isPastDate = dayDate < today;
@@ -839,7 +840,7 @@
 
             // Helper function to check if a date is today
             function isToday(date) {
-                const today = new Date();
+                const today = getChicagoDate();
                 return today.getDate() === date.getDate() &&
                        today.getMonth() === date.getMonth() &&
                        today.getFullYear() === date.getFullYear();
@@ -855,7 +856,7 @@
             // Helper function to format date as "Month Day, Year"
             function formatDate(date) {
                 const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-                return date.toLocaleDateString('en-US', options);
+                return formatInChicagoTimezone(date, options);
             }
         });
     </script>
