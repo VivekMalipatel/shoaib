@@ -32,11 +32,16 @@ def chicago_to_utc(chicago_dt):
     return chicago_dt.astimezone(pytz.utc)
 
 def parse_iso_in_chicago(iso_string):
-    """Parse ISO string assuming it's in Chicago timezone, and convert to UTC for storage"""
-    # Remove 'Z' if present and add Chicago timezone info
-    iso_string = iso_string.replace('Z', '')
+    """Parse ISO string into a UTC datetime, interpreting offsets correctly and assuming Chicago local time when no offset is present"""
+    # Handle ISO strings ending with 'Z' (UTC)
+    if iso_string.endswith('Z'):
+        # Convert 'Z' to +00:00 for fromisoformat
+        dt = datetime.fromisoformat(iso_string.replace('Z', '+00:00'))
+        # Already in UTC, return as-is
+        return dt.astimezone(pytz.utc)
+    # Parse with possible offset
     dt = datetime.fromisoformat(iso_string)
-    # If the datetime has no timezone, assume it's Chicago time
+    # If no tzinfo, assume it's in Chicago local time
     if dt.tzinfo is None:
         dt = CHICAGO_TZ.localize(dt)
     # Convert to UTC for storage

@@ -29,22 +29,30 @@ const API_ENDPOINTS = {
 
 // Helper function to format dates in Chicago timezone
 function formatInChicagoTimezone(date, options = {}) {
+    // Format date for display in Chicago timezone
     return new Date(date).toLocaleString('en-US', {
         ...options,
         timeZone: DEFAULT_TIMEZONE
     });
 }
 
-// Helper function to get a Date object in Chicago timezone
+// Helper function to get a Date object in Chicago timezone reliably
 function getChicagoDate(date = new Date()) {
-    const chicagoTime = new Date(formatInChicagoTimezone(date, {
+    // Use Intl.DateTimeFormat to extract parts in Chicago timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: DEFAULT_TIMEZONE,
         year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        second: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
         hour12: false
-    }));
-    return chicagoTime;
+    });
+    const parts = formatter.formatToParts(date);
+    const obj = {};
+    parts.forEach(({type, value}) => { obj[type] = value; });
+    // Construct an ISO-like string
+    const isoString = `${obj.year}-${obj.month}-${obj.day}T${obj.hour}:${obj.minute}:${obj.second}`;
+    return new Date(isoString);
 }

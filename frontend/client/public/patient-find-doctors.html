@@ -957,9 +957,11 @@
                 const [hours, minutes] = appointmentTimeStr.split(':').map(Number);
                 const [year, month, day] = currentAppointmentDate.split('-').map(Number);
                 
-                // 2. We need to create an ISO string that preserves Chicago timezone context
-                // Format directly as an ISO string with timezone info
-                const appointmentDateISO = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00-05:00`;
+                // 2. Create ISO string by converting Chicago local date to UTC
+                const [y, m, d] = currentAppointmentDate.split('-').map(Number);
+                // Construct Chicago local datetime and convert to UTC ISO
+                const chicagoLocal = getChicagoDate(new Date(y, m - 1, d, hours, minutes, 0));
+                const appointmentDateISO = chicagoLocal.toISOString();
 
                 // Create a reference to the Chicago date for display/logging purposes
                 const chicagoDisplayDate = new Date(year, month-1, day, hours, minutes);

@@ -639,8 +639,8 @@
                     dayElement.className = 'calendar-day';
                     dayElement.textContent = i;
                     
-                    const dayDate = new Date(currentYear, currentMonth, i);
-                    dayDate.setHours(0, 0, 0, 0);
+                    // Create dayDate in Chicago timezone context
+                    const dayDate = getChicagoDate(new Date(currentYear, currentMonth, i, 0, 0, 0));
                     
                     // Check if this day is in the past
                     const isPastDate = dayDate < today;
