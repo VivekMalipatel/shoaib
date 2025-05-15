@@ -1201,31 +1201,32 @@
                         
                         // Check if this time slot is in the past (only for today)
                         let isPastTimeSlot = false;
+                        
+                        // Get the current time in Chicago timezone
+                        const chicagoNow = getChicagoDate();
+                        
                         if (dateStr === new Date().toISOString().split('T')[0]) { // If today
-                            // Get the current time in Chicago timezone
-                            const chicagoNow = getChicagoDate();
-                            
-                            // Create a date object for the slot time on the selected date in Chicago timezone
+                            // Create a date object for the slot time on the selected date
                             const [slotHour, slotMinute] = slot.time.split(':').map(Number);
-                            const slotDate = new Date(dateStr);
-                            slotDate.setHours(slotHour, slotMinute, 0, 0);
                             
-                            // Convert slot date to Chicago timezone for proper comparison
-                            const slotDateChicago = getChicagoDate(slotDate);
+                            // Create a date object for today with the slot time
+                            const chicagoSlotDate = new Date(chicagoNow);
+                            chicagoSlotDate.setHours(slotHour, slotMinute, 0, 0);
                             
-                            // Compare full date objects to determine if the slot is in the past
-                            isPastTimeSlot = slotDateChicago < chicagoNow;
-                            
-                            console.log(`Slot: ${slotDateChicago.toLocaleTimeString()}, Current Chicago time: ${chicagoNow.toLocaleTimeString()}, Is past: ${isPastTimeSlot}`);
+                            // Compare to current time in Chicago
+                            isPastTimeSlot = chicagoSlotDate < chicagoNow;
                         } else {
                             // If not today, check if the date is in the past
-                            const selectedDateObj = new Date(dateStr);
                             const todayInChicago = getChicagoDate();
                             todayInChicago.setHours(0, 0, 0, 0); // Reset to start of day
-                            selectedDateObj.setHours(0, 0, 0, 0); // Reset to start of day
+                            
+                            const selectedDateObj = new Date(dateStr);
+                            // Convert to Chicago timezone for proper comparison
+                            const chicagoSelectedDate = getChicagoDate(selectedDateObj);
+                            chicagoSelectedDate.setHours(0, 0, 0, 0); // Reset to start of day
                             
                             // If the date is before today, all slots are in the past
-                            isPastTimeSlot = selectedDateObj < todayInChicago;
+                            isPastTimeSlot = chicagoSelectedDate < todayInChicago;
                         }
                         
                         const slotElement = document.createElement('div');
