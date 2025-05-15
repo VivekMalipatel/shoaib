@@ -402,8 +402,8 @@
             
             // Track time slots for the selected date
             let timeSlots = [];
-            // Create time slots in 30-minute intervals from 8:00 AM to 7:30 PM
-            const defaultTimeSlots = Array.from({ length: 24 }, (_, i) => {
+            // Create time slots in 30-minute intervals from 8:00 AM to 7:00 PM
+            const defaultTimeSlots = Array.from({ length: 23 }, (_, i) => {
                 const hour = Math.floor(i / 2) + 8;
                 const minutes = i % 2 === 0 ? '00' : '30';
                 return {
@@ -740,8 +740,8 @@
                             dayAvailability = availabilities.find(a => a.dayOfWeek === dayOfWeek && !a.date);
                         }
                         
-                        // Generate default time slots in 30-minute intervals from 8 AM to 7:30 PM
-                        timeSlots = Array.from({ length: 24 }, (_, i) => {
+                        // Generate default time slots in 30-minute intervals from 8 AM to 7:00 PM
+                        timeSlots = Array.from({ length: 23 }, (_, i) => {
                             const hour = Math.floor(i / 2) + 8;
                             const minutes = i % 2 === 0 ? '00' : '30';
                             return {
@@ -770,8 +770,9 @@
                                 const endTimeInMinutes = endHour * 60 + endMinute;
                                 
                                 // Mark slot as available if it falls within the available time range
+                                // Using <= for end time comparison to include the last slot
                                 if (slotTimeInMinutes >= startTimeInMinutes && 
-                                    slotTimeInMinutes < endTimeInMinutes && 
+                                    slotTimeInMinutes <= endTimeInMinutes && 
                                     isAvailable) {
                                     slot.isAvailable = true;
                                 }

@@ -518,23 +518,52 @@
                         return;
                     }
                     
-                    // Check for today and tomorrow
-                    const todayDate = new Date();
+                    // Get current date and time in Chicago timezone
+                    const nowChicago = getChicagoDate();
+                    
+                    // Today and tomorrow dates for comparison (at midnight)
+                    const todayDate = getChicagoDate();
                     todayDate.setHours(0, 0, 0, 0);
                     
                     const tomorrowDate = new Date(todayDate);
                     tomorrowDate.setDate(tomorrowDate.getDate() + 1);
                     
-                    // Count available days
+                    // Check for future available slots today
                     const todayAvailable = availableDates.some(a => {
-                        const date = a.date ? new Date(a.date) : null;
-                        if (date) {
+                        // If this is a specific date entry for today
+                        if (a.date) {
+                            const date = new Date(a.date);
                             date.setHours(0, 0, 0, 0);
-                            return date.getTime() === todayDate.getTime();
+                            
+                            // If not today, skip this check
+                            if (date.getTime() !== todayDate.getTime()) {
+                                return false;
+                            }
+                        } else if (a.dayOfWeek !== todayDate.getDay()) {
+                            // If this is a day-of-week entry but not for today
+                            return false;
                         }
-                        return a.dayOfWeek === todayDate.getDay();
+                        
+                        // Check if there are any time slots today that haven't passed yet
+                        if (a.startTime && a.endTime) {
+                            const [startHour, startMinute] = a.startTime.split(':').map(Number);
+                            const [endHour, endMinute] = a.endTime.split(':').map(Number);
+                            
+                            // Create date objects for start and end times today
+                            const startTimeToday = new Date(todayDate);
+                            startTimeToday.setHours(startHour, startMinute, 0, 0);
+                            
+                            const endTimeToday = new Date(todayDate);
+                            endTimeToday.setHours(endHour, endMinute, 0, 0);
+                            
+                            // Check if at least one future time slot is available today
+                            return nowChicago < endTimeToday;
+                        }
+                        
+                        return false;
                     });
                     
+                    // Check for tomorrow's availability
                     const tomorrowAvailable = availableDates.some(a => {
                         const date = a.date ? new Date(a.date) : null;
                         if (date) {
@@ -544,6 +573,18 @@
                         return a.dayOfWeek === tomorrowDate.getDay();
                     });
                     
+                    // Check if there are any future available dates
+                    const futureDatesAvailable = availableDates.some(a => {
+                        // If this is a specific date
+                        if (a.date) {
+                            const date = new Date(a.date);
+                            date.setHours(0, 0, 0, 0);
+                            return date > todayDate;
+                        }
+                        // If this is a recurring day of the week
+                        return a.dayOfWeek >= 0; // Will match any valid day
+                    });
+                    
                     // Display availability summary
                     if (todayAvailable) {
                         availabilitySummary.textContent = 'Available today';
@@ -551,9 +592,12 @@
                     } else if (tomorrowAvailable) {
                         availabilitySummary.textContent = 'Available tomorrow';
                         availabilitySummary.style.color = '#3b82f6'; // Blue text
-                    } else {
+                    } else if (futureDatesAvailable) {
                         availabilitySummary.textContent = 'Available this week';
                         availabilitySummary.style.color = '#6366f1'; // Indigo text
+                    } else {
+                        availabilitySummary.textContent = 'No upcoming availability';
+                        availabilitySummary.style.color = '#9ca3af'; // Gray text
                     }
                 })
                 .catch(error => {
@@ -761,8 +805,8 @@
                 const timeSlots = [];
                 
                 // Start from the exact start time and go up to end time in 30-minute increments
-                // Generate slots up to endTime minus 30min to avoid an extra slot
-                for (let timeInMinutes = startTimeInMinutes; timeInMinutes + 30 <= endTimeInMinutes; timeInMinutes += 30) {
+                // Fix: Using inclusive end time check for the last slot
+                for (let timeInMinutes = startTimeInMinutes; timeInMinutes < endTimeInMinutes; timeInMinutes += 30) {
                     const hour = Math.floor(timeInMinutes / 60);
                     const minute = timeInMinutes % 60;
                     
