@@ -37,7 +37,7 @@ echo -e "${GREEN}Dependencies installed successfully${NC}"
 echo -e "${YELLOW}Testing backend connection...${NC}"
 
 # Backend URL for direct testing (should match the Vite proxy target)
-BACKEND_URL="http://127.0.0.1:5001/api/user"
+BACKEND_URL="http://20.106.33.167:5001/api/user"
 
 # Test the connection
 echo -e "${YELLOW}Attempting to connect to backend at: ${BACKEND_URL}${NC}"
@@ -91,7 +91,7 @@ fi
 # Start the frontend server using Vite dev command
 echo -e "${YELLOW}Starting frontend development server...${NC}"
 echo -e "${GREEN}The frontend will be available at http://localhost:5173${NC}"
-echo -e "${GREEN}API requests will be proxied to http://127.0.0.1:5001${NC}"
+echo -e "${GREEN}API requests will be proxied to http://20.106.33.167:5001${NC}"
 npm run dev
 
 # This line will only execute if the npm run dev command exits

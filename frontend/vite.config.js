@@ -6,10 +6,10 @@ export default defineConfig({
   server: {
     port: 5173,
     // Use localhost (not 127.0.0.1) to match the origin in the browser
-    host: 'localhost',
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5001',
+        target: 'http://20.106.33.167:5001',
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {
