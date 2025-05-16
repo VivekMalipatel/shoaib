@@ -24,7 +24,9 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1rem 2rem;
+            width: 100%;
+            box-sizing: border-box;
         }
         .welcome-panel {
             background-color: white;
@@ -67,16 +69,36 @@
         }
         .doctor-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 1.5rem;
+            justify-content: center;
+            margin: 0 auto;
         }
         .doctor-card {
             border: 1px solid #e5e7eb;
             border-radius: 8px;
             overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 350px;
+        }
+        .doctor-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         .doctor-info {
             padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .doctor-info .btn {
+            margin-top: auto;
         }
         .doctor-avatar {
             width: 100%;
@@ -113,6 +135,10 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
+            overflow-y: auto; /* Add this to enable vertical scrolling */
+            display: flex; /* Used to center the modal content */
+            align-items: center; /* Vertically center modal content */
+            justify-content: center; /* Horizontally center modal content */
         }
         .modal-content {
             background-color: white;
@@ -121,8 +147,11 @@
             border-radius: 8px;
             max-width: 500px;
             position: relative;
-            max-height: 80vh;
-            overflow-y: auto;
+            max-height: 80vh; /* Limit the maximum height based on viewport height */
+            width: 90%; /* Control width based on viewport */
+            max-width: 500px; /* Maintain max-width constraint */
+            overflow-y: auto; /* Enable scrolling for the content itself if it overflows */
+            margin: auto; /* Helps with centering and ensures it doesn't stick to the top */
         }
         .close-modal {
             position: absolute;
@@ -208,6 +237,48 @@
             border-top: 1px solid #e5e7eb;
             color: #ef4444;
         }
+        
+        /* Responsive styles */
+        @media (max-width: 1024px) {
+            .doctor-list {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-group {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            select, input {
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .doctor-list {
+                grid-template-columns: 1fr;
+            }
+            .doctor-card {
+                max-width: 100%;
+            }
+            .welcome-panel, .card {
+                padding: 1rem;
+            }
+            .modal-content {
+                margin: 5% 1rem;
+                padding: 1.5rem;
+                width: auto;
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -266,12 +337,14 @@
                 </div>
             </div>
 
-            <div class="doctor-list" id="doctor-list">
-                <!-- Loading indicator -->
-                <div id="loading-doctors" style="text-align: center; padding: 2rem;">
-                    Loading doctors...
+            <div class="doctor-list-container" style="display: flex; justify-content: center; width: 100%;">
+                <div class="doctor-list" id="doctor-list" style="width: 100%;">
+                    <!-- Loading indicator -->
+                    <div id="loading-doctors" style="text-align: center; padding: 2rem;">
+                        Loading doctors...
+                    </div>
+                    <!-- Doctor cards will be inserted here by JavaScript -->
                 </div>
-                <!-- Doctor cards will be inserted here by JavaScript -->
             </div>
         </div>
     </div>
@@ -432,14 +505,12 @@
                     }
                     
                     if (doctors.length === 0) {
-                        doctorsList.innerHTML = '<div style="text-align: center; padding: 2rem;">No doctors available at this time.</div>';
+                        doctorsList.innerHTML = '<div style="text-align: center; padding: 2rem; grid-column: 1 / -1;">No doctors available at this time.</div>';
                         return;
                     }
                     
                     // Clear existing doctors
-                    if (loadingIndicator) {
-                        doctorsList.innerHTML = '';
-                    }
+                    doctorsList.innerHTML = '';
                     
                     // Add doctors to the list
                     doctors.forEach(doctor => {
@@ -478,7 +549,7 @@
                 })
                 .catch(error => {
                     console.error('Error loading doctors:', error);
-                    doctorsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;">Failed to load doctors. Please try refreshing the page.</div>';
+                    doctorsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444; grid-column: 1 / -1; width: 100%;">Failed to load doctors. Please try refreshing the page.</div>';
                 });
             }
             

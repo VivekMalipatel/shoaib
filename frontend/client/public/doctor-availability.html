@@ -472,159 +472,142 @@
             
             // Function to save availability
             function saveAvailability() {
-                // Get the day of week (0-6, where 0 is Sunday)
-                const dayOfWeek = selectedDate.getDay();
+                if (!selectedDate || !currentUserId) return;
                 
-                // Format the full date in YYYY-MM-DD format for API
-                const formattedDate = selectedDate.toISOString().split('T')[0];
-                
-                // Find the earliest and latest available time slots
-                let startHour = 24;
-                let endHour = 0;
-                let startMinute = 0;
-                let endMinute = 0;
-                let anySlotAvailable = false;
-                
-                timeSlots.forEach(slot => {
-                    if (slot.isAvailable) {
-                        anySlotAvailable = true;
-                        const [hourStr, minuteStr] = slot.time.split(':');
-                        const hour = parseInt(hourStr);
-                        const minute = parseInt(minuteStr);
-                        
-                        if (hour < startHour || (hour === startHour && minute < startMinute)) {
-                            startHour = hour;
-                            startMinute = minute;
-                        }
-                        
-                        if (hour > endHour || (hour === endHour && minute > endMinute)) {
-                            endHour = hour;
-                            endMinute = minute;
-                            // Add 30 minutes to the end time (unless it's already at :30)
-                            if (endMinute === 0) {
-                                endMinute = 30;
+                if (!csrfToken) {
+                    console.error('CSRF token not available. Fetching it now...');
+                    fetch(API_BASE_URL + '/api/csrf-token')
+                        .then(response => response.json())
+                        .then(data => {
+                            csrfToken = data.csrf_token;
+                            console.log('CSRF token fetched successfully, retry saving');
+                            if (csrfToken) { // Ensure token was actually fetched
+                                saveAvailability(); // Retry saving
                             } else {
-                                endHour += 1;
-                                endMinute = 0;
+                                // Show error if token still not available
+                                const feedback = document.createElement('div');
+                                feedback.style.backgroundColor = '#fee2e2';
+                                feedback.style.color = '#b91c1c';
+                                feedback.style.padding = '0.5rem';
+                                feedback.style.borderRadius = '4px';
+                                feedback.style.marginTop = '1rem';
+                                feedback.textContent = 'Failed to get security token. Please refresh and try again.';
+                                document.getElementById('save-availability').parentNode.appendChild(feedback);
+                                setTimeout(() => feedback.remove(), 5000);
                             }
-                        }
-                    }
-                });
-                
-                // If no slots are available, use default range but mark as unavailable
-                if (!anySlotAvailable) {
-                    startHour = 9;
-                    startMinute = 0;
-                    endHour = 17;
-                    endMinute = 0;
+                        })
+                        .catch(error => {
+                            console.error('Error fetching CSRF token:', error);
+                            const feedback = document.createElement('div');
+                            feedback.style.backgroundColor = '#fee2e2';
+                            feedback.style.color = '#b91c1c';
+                            feedback.style.padding = '0.5rem';
+                            feedback.style.borderRadius = '4px';
+                            feedback.style.marginTop = '1rem';
+                            feedback.textContent = 'Failed to get security token. Please refresh and try again.';
+                            document.getElementById('save-availability').parentNode.appendChild(feedback);
+                            setTimeout(() => feedback.remove(), 5000);
+                        });
+                    return;
                 }
                 
-                // Format times in HH:MM format
-                const startTime = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
-                const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+                const dayOfWeek = selectedDate.getDay();
+                const formattedDate = selectedDate.toISOString().split('T')[0];
                 
-                // Create availability data object
-                const availabilityData = {
-                    dayOfWeek: dayOfWeek,
-                    date: formattedDate,  // Add specific date
-                    startTime: startTime,
-                    endTime: endTime,
-                    isAvailable: anySlotAvailable
-                };
-                
-                // Log the data being sent
-                console.log('Saving availability data:', availabilityData);
-                
-                // Show saving state
                 const saveButton = document.getElementById('save-availability');
                 const originalText = saveButton.textContent;
                 saveButton.textContent = 'Saving...';
                 saveButton.disabled = true;
-                
-                // Get CSRF token - try from variable first, then localStorage as backup
-                const token = csrfToken || localStorage.getItem('csrfToken');
-                
-                // Prepare headers
-                const headers = {
-                    'Content-Type': 'application/json'
-                };
-                
-                // Add CSRF token if available
-                if (token) {
-                    headers['X-CSRFToken'] = token;
-                }
-                
-                // Send data to the server - using API_ENDPOINTS
-                const availabilityUrl = API_BASE_URL + `/api/doctors/${currentUserId}/availability`;
-                
-                fetch(availabilityUrl, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(availabilityData),
-                    credentials: 'include' // Include credentials for session cookies
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        // Log response status for debugging
-                        console.error('Server returned status:', response.status);
-                        
-                        // Try to get more information from the response
-                        return response.json().then(errorData => {
-                            throw new Error(`Failed to save availability: ${errorData.error || response.statusText}`);
-                        }).catch(err => {
-                            if (err instanceof SyntaxError) {
-                                throw new Error(`Failed to save availability: ${response.statusText}`);
-                            }
-                            throw err;
-                        });
+
+                const promises = timeSlots.map(slot => {
+                    const [hourStr, minuteStr] = slot.time.split(':');
+                    const hour = parseInt(hourStr);
+                    const minute = parseInt(minuteStr);
+
+                    const slotStartTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    
+                    let endHour = hour;
+                    let endMinute = minute + 30;
+                    if (endMinute >= 60) {
+                        endHour = (endHour + 1) % 24; // Handle hour overflow to next day if slot is 23:30
+                        endMinute -= 60;
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    // Show success message
-                    const feedback = document.createElement('div');
-                    feedback.style.backgroundColor = '#ecfdf5';
-                    feedback.style.color = '#065f46';
-                    feedback.style.padding = '0.5rem';
-                    feedback.style.borderRadius = '4px';
-                    feedback.style.marginTop = '1rem';
-                    feedback.textContent = 'Availability saved successfully!';
+                    const slotEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+
+                    const availabilityData = {
+                        dayOfWeek: dayOfWeek, 
+                        date: formattedDate,
+                        startTime: slotStartTime,
+                        endTime: slotEndTime,
+                        isAvailable: slot.isAvailable 
+                    };
                     
-                    // Insert the feedback message after the save button
-                    saveButton.parentNode.appendChild(feedback);
+                    // Log the data being sent for each slot
+                    // console.log('Saving slot-specific availability data:', availabilityData);
                     
-                    // Remove the message after 3 seconds
-                    setTimeout(() => {
-                        feedback.remove();
-                    }, 3000);
+                    const currentCsrfToken = csrfToken || localStorage.getItem('csrfToken');
+                    const headers = {
+                        'Content-Type': 'application/json'
+                    };
+                    if (currentCsrfToken) {
+                        headers['X-CSRFToken'] = currentCsrfToken;
+                    }
                     
-                    console.log('Availability saved:', data);
-                })
-                .catch(error => {
-                    console.error('Error saving availability:', error);
+                    const availabilityUrl = API_BASE_URL + `/api/doctors/${currentUserId}/availability`;
                     
-                    // Show error message
-                    const feedback = document.createElement('div');
-                    feedback.style.backgroundColor = '#fee2e2';
-                    feedback.style.color = '#b91c1c';
-                    feedback.style.padding = '0.5rem';
-                    feedback.style.borderRadius = '4px';
-                    feedback.style.marginTop = '1rem';
-                    feedback.textContent = error.message || 'Failed to save availability. Please try again.';
-                    
-                    // Insert the feedback message after the save button
-                    saveButton.parentNode.appendChild(feedback);
-                    
-                    // Remove the message after 5 seconds
-                    setTimeout(() => {
-                        feedback.remove();
-                    }, 5000);
-                })
-                .finally(() => {
-                    // Reset button state
-                    saveButton.textContent = originalText;
-                    saveButton.disabled = false;
+                    return fetch(availabilityUrl, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(availabilityData),
+                        credentials: 'include'
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            console.error('Server returned status:', response.status, 'for slot', slot.time);
+                            return response.json().then(errorData => {
+                                throw new Error(`Failed to save slot ${slot.time}: ${errorData.error || response.statusText}`);
+                            }).catch(err => {
+                                if (err instanceof SyntaxError) {
+                                    throw new Error(`Failed to save slot ${slot.time}: ${response.statusText} (Invalid JSON response)`);
+                                }
+                                throw err;
+                            });
+                        }
+                        return response.json();
+                    });
                 });
+
+                Promise.all(promises)
+                    .then(results => {
+                        const feedback = document.createElement('div');
+                        feedback.style.backgroundColor = '#ecfdf5';
+                        feedback.style.color = '#065f46';
+                        feedback.style.padding = '0.5rem';
+                        feedback.style.borderRadius = '4px';
+                        feedback.style.marginTop = '1rem';
+                        feedback.textContent = 'Availability saved successfully!';
+                        saveButton.parentNode.appendChild(feedback);
+                        setTimeout(() => feedback.remove(), 3000);
+                        
+                        console.log('All slots processed and saved:', results);
+                        loadTimeSlots(); // Reload to reflect server state
+                    })
+                    .catch(error => {
+                        console.error('Error saving one or more slots:', error);
+                        const feedback = document.createElement('div');
+                        feedback.style.backgroundColor = '#fee2e2';
+                        feedback.style.color = '#b91c1c';
+                        feedback.style.padding = '0.5rem';
+                        feedback.style.borderRadius = '4px';
+                        feedback.style.marginTop = '1rem';
+                        feedback.textContent = error.message || 'Failed to save some availability slots. Please try again.';
+                        saveButton.parentNode.appendChild(feedback);
+                        setTimeout(() => feedback.remove(), 5000);
+                    })
+                    .finally(() => {
+                        saveButton.textContent = originalText;
+                        saveButton.disabled = false;
+                    });
             }
 
             // Helper function to update the calendar
