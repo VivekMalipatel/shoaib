@@ -568,8 +568,12 @@
                     return response.json();
                 })
                 .then(availabilities => {
-                    // Check for any available dates
-                    const availableDates = availabilities.filter(a => a.isAvailable);
+                    // Check for any valid available dates with either time slots or time ranges
+                    const availableDates = availabilities.filter(a => {
+                        const hasTimeRange = a.isAvailable && a.startTime && a.endTime;
+                        const hasIndividualSlots = a.isAvailable && Array.isArray(a.availableSlots) && a.availableSlots.length > 0;
+                        return hasTimeRange || hasIndividualSlots;
+                    });
                     
                     const availabilitySummary = document.getElementById(`availability-${doctorId}`);
                     if (!availabilitySummary) return;
@@ -615,8 +619,25 @@
                             return false;
                         }
                         
-                        // Check if there are any time slots today that haven't passed yet
-                        if (a.startTime && a.endTime) {
+                        // If we have individual available slots
+                        if (Array.isArray(a.availableSlots) && a.availableSlots.length > 0) {
+                            // Check each slot to see if any are still in the future
+                            for (const slotTime of a.availableSlots) {
+                                const [slotHour, slotMinute] = slotTime.split(':').map(Number);
+                                
+                                // Create slot datetime for today
+                                const slotTimeToday = new Date(todayDate);
+                                slotTimeToday.setHours(slotHour, slotMinute, 0, 0);
+                                
+                                // Check if this slot is in the future
+                                if (nowChicago < slotTimeToday) {
+                                    return true;
+                                }
+                            }
+                            return false; // No future slots found
+                        }
+                        // Fallback to using time range if no individual slots
+                        else if (a.startTime && a.endTime) {
                             const [startHour, startMinute] = a.startTime.split(':').map(Number);
                             const [endHour, endMinute] = a.endTime.split(':').map(Number);
                             
@@ -636,24 +657,64 @@
                     
                     // Check for tomorrow's availability
                     const tomorrowAvailable = availableDates.some(a => {
-                        const date = a.date ? new Date(a.date) : null;
-                        if (date) {
+                        // Check if this is a specific date entry for tomorrow
+                        if (a.date) {
+                            const date = new Date(a.date);
                             date.setHours(0, 0, 0, 0);
-                            return date.getTime() === tomorrowDate.getTime();
+                            if (date.getTime() === tomorrowDate.getTime()) {
+                                // If it has individual slots, check if there are any
+                                if (Array.isArray(a.availableSlots)) {
+                                    return a.availableSlots.length > 0;
+                                }
+                                // Otherwise, check for time range
+                                return a.startTime && a.endTime;
+                            }
+                            return false;
                         }
-                        return a.dayOfWeek === tomorrowDate.getDay();
+                        
+                        // Check if this is a recurring day-of-week entry for tomorrow
+                        if (a.dayOfWeek === tomorrowDate.getDay()) {
+                            // If it has individual slots, check if there are any
+                            if (Array.isArray(a.availableSlots)) {
+                                return a.availableSlots.length > 0;
+                            }
+                            // Otherwise, check for time range
+                            return a.startTime && a.endTime;
+                        }
+                        
+                        return false;
                     });
                     
                     // Check if there are any future available dates
                     const futureDatesAvailable = availableDates.some(a => {
-                        // If this is a specific date
+                        // Check if this is a specific date entry for a future date
                         if (a.date) {
                             const date = new Date(a.date);
                             date.setHours(0, 0, 0, 0);
-                            return date > todayDate;
+                            
+                            // Check if the date is in the future
+                            if (date > todayDate) {
+                                // If it has individual slots, check if there are any
+                                if (Array.isArray(a.availableSlots)) {
+                                    return a.availableSlots.length > 0;
+                                }
+                                // Otherwise, check for time range
+                                return a.startTime && a.endTime;
+                            }
+                            return false;
                         }
-                        // If this is a recurring day of the week
-                        return a.dayOfWeek >= 0; // Will match any valid day
+                        
+                        // For recurring day-of-week entries, check if they have slots or time ranges
+                        if (a.dayOfWeek >= 0) { // Valid day of week
+                            // If it has individual slots, check if there are any
+                            if (Array.isArray(a.availableSlots)) {
+                                return a.availableSlots.length > 0;
+                            }
+                            // Otherwise, check for time range
+                            return a.startTime && a.endTime;
+                        }
+                        
+                        return false;
                     });
                     
                     // Display availability summary
@@ -763,10 +824,20 @@
                         
                         // If specific date exists and is available, use it
                         if (specificDateEntry && specificDateEntry.isAvailable) {
-                            availableDates.push({
-                                date: checkDate,
-                                availability: specificDateEntry
-                            });
+                            // Check if there are available slots for this date
+                            const hasAvailableSlots = Array.isArray(specificDateEntry.availableSlots) && 
+                                                     specificDateEntry.availableSlots.length > 0;
+                            
+                            // If using individual slots, make sure there are slots available
+                            if (!hasAvailableSlots && !specificDateEntry.startTime) {
+                                // Skip dates with no available slots
+                                console.log(`Skipping date ${formattedDate} - no available slots`);
+                            } else {
+                                availableDates.push({
+                                    date: checkDate,
+                                    availability: specificDateEntry
+                                });
+                            }
                         }
                         // If no specific date entry or it's not marked as available, check day of week
                         else if (!specificDateEntry) {
@@ -775,10 +846,20 @@
                             );
                             
                             if (dayOfWeekAvailability) {
-                                availableDates.push({
-                                    date: checkDate,
-                                    availability: dayOfWeekAvailability
-                                });
+                                // Check if there are available slots for this day of week
+                                const hasAvailableSlots = Array.isArray(dayOfWeekAvailability.availableSlots) && 
+                                                        dayOfWeekAvailability.availableSlots.length > 0;
+                                
+                                // If using individual slots, make sure there are slots available
+                                if (!hasAvailableSlots && !dayOfWeekAvailability.startTime) {
+                                    // Skip days with no available slots
+                                    console.log(`Skipping day of week ${dayOfWeek} - no available slots`);
+                                } else {
+                                    availableDates.push({
+                                        date: checkDate,
+                                        availability: dayOfWeekAvailability
+                                    });
+                                }
                             }
                         }
                     }
@@ -873,23 +954,45 @@
                 
                 // Generate time slots in 30-minute increments
                 timeSlotList.innerHTML = '';
-                const timeSlots = [];
+                let timeSlots = [];
                 
-                // Start from the exact start time and go up to end time in 30-minute increments
-                // Fix: Using inclusive end time check for the last slot
-                for (let timeInMinutes = startTimeInMinutes; timeInMinutes < endTimeInMinutes; timeInMinutes += 30) {
-                    const hour = Math.floor(timeInMinutes / 60);
-                    const minute = timeInMinutes % 60;
+                // Check if we have individual availableSlots in the availability data
+                if (Array.isArray(dateAvailability.availableSlots) && dateAvailability.availableSlots.length > 0) {
+                    // Use the individual time slots from the doctor's availability
+                    dateAvailability.availableSlots.forEach(slotTime => {
+                        const [hour, minute] = slotTime.split(':').map(Number);
+                        
+                        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                        
+                        // Format for display (12-hour clock)
+                        let displayHour = hour % 12;
+                        if (displayHour === 0) displayHour = 12;
+                        const ampm = hour < 12 ? 'AM' : 'PM';
+                        const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+                        
+                        timeSlots.push({ time: timeStr, display: displayTime });
+                    });
                     
-                    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    console.log('Using individual time slots from doctor availability:', timeSlots);
+                } else {
+                    // Fallback to generating slots from start/end time range
+                    console.log('No individual slots found, generating from time range');
                     
-                    // Format for display (12-hour clock)
-                    let displayHour = hour % 12;
-                    if (displayHour === 0) displayHour = 12;
-                    const ampm = hour < 12 ? 'AM' : 'PM';
-                    const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
-                    
-                    timeSlots.push({ time: timeStr, display: displayTime });
+                    // Start from the exact start time and go up to end time in 30-minute increments
+                    for (let timeInMinutes = startTimeInMinutes; timeInMinutes < endTimeInMinutes; timeInMinutes += 30) {
+                        const hour = Math.floor(timeInMinutes / 60);
+                        const minute = timeInMinutes % 60;
+                        
+                        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                        
+                        // Format for display (12-hour clock)
+                        let displayHour = hour % 12;
+                        if (displayHour === 0) displayHour = 12;
+                        const ampm = hour < 12 ? 'AM' : 'PM';
+                        const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+                        
+                        timeSlots.push({ time: timeStr, display: displayTime });
+                    }
                 }
                 
                 // Check for existing appointments to block out time slots
