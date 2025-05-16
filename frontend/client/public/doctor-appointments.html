@@ -1273,11 +1273,14 @@
                 const appointmentItems = document.querySelectorAll('.appointment-item');
                 
                 appointmentItems.forEach(item => {
-                    const status = item.querySelector('.badge').textContent.toLowerCase();
-                    const dateTime = item.querySelector('.appointment-details div:nth-child(2)').textContent.toLowerCase();
-                    const patientName = item.querySelector('strong').textContent.toLowerCase();
+                    const badge = item.querySelector('.badge');
+                    const status = badge ? badge.textContent.toLowerCase() : '';
+                    const dateTimeElement = item.querySelector('.appointment-details div:nth-child(2)');
+                    const dateTime = dateTimeElement ? dateTimeElement.textContent.toLowerCase() : '';
+                    const patientNameElement = item.querySelector('.appointment-details div:nth-child(1) strong');
+                    const patientName = patientNameElement ? patientNameElement.textContent.toLowerCase() : '';
                     
-                    let showByStatus = statusFilter === 'all' || status.includes(statusFilter);
+                    let showByStatus = statusFilter === 'all' || status === statusFilter;
                     let showByDate = true;
                     
                     // Date filtering logic
@@ -1286,14 +1289,19 @@
                     } else if (dateFilter === 'tomorrow' && !dateTime.includes('tomorrow')) {
                         showByDate = false;
                     } else if (dateFilter === 'this-week') {
-                        // Simple check for "today" or "tomorrow" - in a real app, you would use more sophisticated date logic
-                        showByDate = dateTime.includes('today') || dateTime.includes('tomorrow');
+                        // Check for this week's days
+                        showByDate = dateTime.includes('today') || 
+                                     dateTime.includes('tomorrow') || 
+                                     (dateTime.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i) !== null);
                     } else if (dateFilter === 'next-week') {
-                        // Simple logic - in a real app, you would use more sophisticated date logic
-                        showByDate = !dateTime.includes('today') && !dateTime.includes('tomorrow') && !dateTime.includes('yesterday');
+                        // This is a simplified check - in a real app, would use actual date calculations
+                        // For now, assume dates that aren't today/tomorrow and don't have "yesterday" are future dates
+                        showByDate = !dateTime.includes('today') && 
+                                    !dateTime.includes('tomorrow') && 
+                                    !dateTime.includes('yesterday');
                     }
                     
-                    let showBySearch = patientName.includes(searchFilter);
+                    let showBySearch = searchFilter === '' || patientName.includes(searchFilter);
                     
                     if (showByStatus && showByDate && showBySearch) {
                         item.style.display = '';
