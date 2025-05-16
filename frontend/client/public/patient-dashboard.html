@@ -202,7 +202,7 @@
                     </div>
                     <!-- Doctors will be inserted here by JavaScript -->
                 </div>
-                <a href="/patient-find-doctors.html"><button class="btn" style="margin-top: 1rem;">View All Doctors</button></a>
+                <a href="/patient-find-doctors.html?action=view"><button class="btn" style="margin-top: 1rem;">View All Doctors</button></a>
             </div>
 
             <div class="card">
@@ -409,7 +409,7 @@
                             <div>
                                 <strong>${doctor.full_name || doctor.fullName}</strong> - ${doctor.specialization || 'General'}
                             </div>
-                            <a href="/patient-find-doctors.html"><button class="btn btn-sm">Book</button></a>
+                            <a href="/patient-find-doctors.html?action=book&doctorId=${doctor.id}"><button class="btn btn-sm">Book</button></a>
                         `;
                         
                         doctorsList.appendChild(doctorItem);

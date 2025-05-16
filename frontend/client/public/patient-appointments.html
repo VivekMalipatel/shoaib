@@ -865,11 +865,29 @@
                 const appointments = document.querySelectorAll('.appointment-item');
                 
                 appointments.forEach(appointment => {
-                    const appointmentType = appointment.querySelector('.appointment-details div:nth-child(2)').textContent.toLowerCase();
-                    const doctorName = appointment.querySelector('strong').textContent.toLowerCase();
+                    // Get the full text from the second div which contains date and appointment type
+                    const appointmentText = appointment.querySelector('.appointment-details div:nth-child(2)').textContent.toLowerCase();
                     
-                    let showByType = typeFilter === 'all' || appointmentType.includes(typeFilter.replace('-', ' '));
-                    let showBySearch = doctorName.includes(searchFilter);
+                    // Extract just the doctor name properly
+                    const doctorName = appointment.querySelector('.appointment-details div:nth-child(1) strong').textContent.toLowerCase();
+                    
+                    // Check if the appointment text contains the selected type
+                    // For "all" we don't filter by type
+                    let showByType = typeFilter === 'all';
+                    
+                    // Check for specific appointment types
+                    if (typeFilter === 'regular-checkup' && appointmentText.includes('regular checkup')) {
+                        showByType = true;
+                    } else if (typeFilter === 'follow-up' && appointmentText.includes('follow-up')) {
+                        showByType = true;
+                    } else if (typeFilter === 'consultation' && appointmentText.includes('consultation')) {
+                        showByType = true;
+                    } else if (typeFilter === 'urgent-care' && appointmentText.includes('urgent-care')) {
+                        showByType = true;
+                    }
+                    
+                    // Check if the doctor name contains the search text
+                    let showBySearch = !searchFilter || doctorName.includes(searchFilter);
                     
                     if (showByType && showBySearch) {
                         appointment.style.display = '';

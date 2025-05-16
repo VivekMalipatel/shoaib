@@ -136,9 +136,6 @@
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
             overflow-y: auto; /* Add this to enable vertical scrolling */
-            display: flex; /* Used to center the modal content */
-            align-items: center; /* Vertically center modal content */
-            justify-content: center; /* Horizontally center modal content */
         }
         .modal-content {
             background-color: white;
@@ -546,6 +543,32 @@
                     
                     // Apply initial filtering
                     filterDoctors();
+                    
+                    // Check if we need to open the booking modal for a specific doctor
+                    // Get URL parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const action = urlParams.get('action');
+                    const doctorId = urlParams.get('doctorId');
+                    
+                    console.log('URL parameters:', { action, doctorId });
+                    
+                    // Only open the booking modal if explicitly requested via the "book" action
+                    if (action === 'book' && doctorId) {
+                        console.log('Opening booking modal for doctor ID:', doctorId);
+                        // Find the doctor's book button and click it to open the modal
+                        // Add a reasonable delay to ensure availability data is loaded first
+                        setTimeout(() => {
+                            const bookButton = document.querySelector(`.book-btn[data-doctor-id="${doctorId}"]`);
+                            if (bookButton) {
+                                // Make sure we've fetched availability data before opening the modal
+                                bookButton.click();
+                            } else {
+                                console.warn(`Book button for doctor ${doctorId} not found`);
+                            }
+                        }, 1000); // Longer delay to ensure availability data is loaded
+                    } else {
+                        console.log('Not opening booking modal automatically - no book action or doctor ID specified');
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading doctors:', error);
@@ -570,9 +593,26 @@
                 .then(availabilities => {
                     // Check for any valid available dates with either time slots or time ranges
                     const availableDates = availabilities.filter(a => {
-                        const hasTimeRange = a.isAvailable && a.startTime && a.endTime;
-                        const hasIndividualSlots = a.isAvailable && Array.isArray(a.availableSlots) && a.availableSlots.length > 0;
-                        return hasTimeRange || hasIndividualSlots;
+                        // First check if the entry is marked as available
+                        if (!a.isAvailable) {
+                            return false;
+                        }
+                        
+                        // Prioritize individual slots if they exist
+                        if (Array.isArray(a.availableSlots)) {
+                            if (a.availableSlots.length > 0) {
+                                return true;
+                            } else {
+                                return false;
+                            }
+                        }
+                        
+                        // Fall back to time range only if individual slots array doesn't exist
+                        if (a.startTime && a.endTime) {
+                            return true;
+                        }
+                        
+                        return false;
                     });
                     
                     const availabilitySummary = document.getElementById(`availability-${doctorId}`);
@@ -605,22 +645,31 @@
                     
                     // Check for future available slots today
                     const todayAvailable = availableDates.some(a => {
-                        // If this is a specific date entry for today
+                        // First check if this entry applies to today
+                        let isToday = false;
+                        
+                        // If it's a specific date entry
                         if (a.date) {
-                            const date = new Date(a.date);
-                            date.setHours(0, 0, 0, 0);
-                            
-                            // If not today, skip this check
-                            if (date.getTime() !== todayDate.getTime()) {
-                                return false;
-                            }
-                        } else if (a.dayOfWeek !== todayDate.getDay()) {
-                            // If this is a day-of-week entry but not for today
-                            return false;
+                            // Convert the string date to a Date object
+                            const currentDateStr = todayDate.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+                            isToday = a.date === currentDateStr;
+                        } 
+                        // If it's a day-of-week entry
+                        else if (a.dayOfWeek === todayDate.getDay()) {
+                            isToday = true;
                         }
                         
-                        // If we have individual available slots
-                        if (Array.isArray(a.availableSlots) && a.availableSlots.length > 0) {
+                        // If this doesn't match today, skip it
+                        if (!isToday) return false;
+                        
+                        // Special handling based on slot type:
+                        // 1. If the doctor explicitly defines individual slots, check those
+                        if (Array.isArray(a.availableSlots)) {
+                            // If there are no slots today, it's not available
+                            if (a.availableSlots.length === 0) {
+                                return false;
+                            }
+                            
                             // Check each slot to see if any are still in the future
                             for (const slotTime of a.availableSlots) {
                                 const [slotHour, slotMinute] = slotTime.split(':').map(Number);
@@ -636,7 +685,7 @@
                             }
                             return false; // No future slots found
                         }
-                        // Fallback to using time range if no individual slots
+                        // 2. If the doctor uses time range, check that
                         else if (a.startTime && a.endTime) {
                             const [startHour, startMinute] = a.startTime.split(':').map(Number);
                             const [endHour, endMinute] = a.endTime.split(':').map(Number);
@@ -652,34 +701,37 @@
                             return nowChicago < endTimeToday;
                         }
                         
+                        console.log('No valid availability format for today');
                         return false;
                     });
                     
                     // Check for tomorrow's availability
                     const tomorrowAvailable = availableDates.some(a => {
-                        // Check if this is a specific date entry for tomorrow
+                        // First check if this entry applies to tomorrow
+                        let isTomorrow = false;
+                        
+                        // If it's a specific date entry
                         if (a.date) {
-                            const date = new Date(a.date);
-                            date.setHours(0, 0, 0, 0);
-                            if (date.getTime() === tomorrowDate.getTime()) {
-                                // If it has individual slots, check if there are any
-                                if (Array.isArray(a.availableSlots)) {
-                                    return a.availableSlots.length > 0;
-                                }
-                                // Otherwise, check for time range
-                                return a.startTime && a.endTime;
-                            }
-                            return false;
+                            // Convert tomorrow's date to a string in YYYY-MM-DD format
+                            const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
+                            isTomorrow = a.date === tomorrowDateStr;
+                        } 
+                        // If it's a day-of-week entry
+                        else if (a.dayOfWeek === tomorrowDate.getDay()) {
+                            isTomorrow = true;
                         }
                         
-                        // Check if this is a recurring day-of-week entry for tomorrow
-                        if (a.dayOfWeek === tomorrowDate.getDay()) {
-                            // If it has individual slots, check if there are any
-                            if (Array.isArray(a.availableSlots)) {
-                                return a.availableSlots.length > 0;
-                            }
-                            // Otherwise, check for time range
-                            return a.startTime && a.endTime;
+                        // If this doesn't match tomorrow, skip it
+                        if (!isTomorrow) return false;
+                        
+                        // Special handling based on slot type:
+                        // 1. If the doctor explicitly defines individual slots
+                        if (Array.isArray(a.availableSlots)) {
+                            return a.availableSlots.length > 0;
+                        }
+                        // 2. If the doctor uses time range
+                        else if (a.startTime && a.endTime) {
+                            return true;
                         }
                         
                         return false;
@@ -687,35 +739,54 @@
                     
                     // Check if there are any future available dates
                     const futureDatesAvailable = availableDates.some(a => {
-                        // Check if this is a specific date entry for a future date
+                        // Skip today and tomorrow - we've already checked those
                         if (a.date) {
+                            // Get today's and tomorrow's date in YYYY-MM-DD format
+                            const todayDateStr = todayDate.toISOString().split('T')[0];
+                            const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
+                            
+                            // If it's today or tomorrow, we've already checked it
+                            if (a.date === todayDateStr || a.date === tomorrowDateStr) {
+                                return false;
+                            }
+                            
+                            // Check if the date is in the future
                             const date = new Date(a.date);
                             date.setHours(0, 0, 0, 0);
                             
-                            // Check if the date is in the future
                             if (date > todayDate) {
-                                // If it has individual slots, check if there are any
+                                // Special handling based on slot type:
+                                // 1. If the doctor explicitly defines individual slots
                                 if (Array.isArray(a.availableSlots)) {
-                                    return a.availableSlots.length > 0;
+                                    const hasSlots = a.availableSlots.length > 0;
+                                    return hasSlots;
                                 }
-                                // Otherwise, check for time range
-                                return a.startTime && a.endTime;
+                                // 2. If the doctor uses time range
+                                else if (a.startTime && a.endTime) {
+                                    return true;
+                                }
                             }
                             return false;
                         }
                         
-                        // For recurring day-of-week entries, check if they have slots or time ranges
-                        if (a.dayOfWeek >= 0) { // Valid day of week
-                            // If it has individual slots, check if there are any
+                        // For recurring day-of-week entries, skip today and tomorrow
+                        if (a.dayOfWeek >= 0 && a.dayOfWeek !== todayDate.getDay() && a.dayOfWeek !== tomorrowDate.getDay()) {
+                            // Special handling based on slot type:
+                            // 1. If the doctor explicitly defines individual slots
                             if (Array.isArray(a.availableSlots)) {
-                                return a.availableSlots.length > 0;
+                                const hasSlots = a.availableSlots.length > 0;
+                                return hasSlots;
                             }
-                            // Otherwise, check for time range
-                            return a.startTime && a.endTime;
+                            // 2. If the doctor uses time range
+                            else if (a.startTime && a.endTime) {
+                                return true;
+                            }
                         }
                         
                         return false;
                     });
+                    
+                    // Display availability summary based on checks
                     
                     // Display availability summary
                     if (todayAvailable) {
@@ -765,19 +836,22 @@
                         }
                         selectedTimeSlot = null;
                         
-                        // Load available dates for this doctor
+                        // First, show the modal so the user sees something happening immediately
+                        const modal = document.getElementById('booking-modal');
+                        modal.style.display = 'flex'; // Use flex display for proper centering
+                        modal.style.alignItems = 'center'; // Vertically center
+                        modal.style.justifyContent = 'center'; // Horizontally center
+                        
+                        // Then load available dates for this doctor
                         loadAvailableDates(doctorId);
                         
                         // Reset time slots
                         const timeSlotList = document.getElementById('time-slot-list');
                         timeSlotList.innerHTML = `
                             <div id="loading-time-slots" style="grid-column: span 3; text-align: center; padding: 1rem;">
-                                Select a date to see available time slots
+                                Loading available time slots...
                             </div>
                         `;
-                        
-                        // Show modal
-                        document.getElementById('booking-modal').style.display = 'block';
                     });
                 });
             }
@@ -903,7 +977,11 @@
                     if (availableDates.length > 0) {
                         const firstDate = availableDates[0].date.toISOString().split('T')[0];
                         dateSelect.value = firstDate;
-                        loadAvailableTimeSlots(firstDate);
+                        
+                        // Load time slots only if we have a valid date
+                        if (firstDate) {
+                            loadAvailableTimeSlots(firstDate);
+                        }
                     }
                 })
                 .catch(error => {
