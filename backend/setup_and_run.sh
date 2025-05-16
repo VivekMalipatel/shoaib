@@ -33,63 +33,21 @@ SECRET_KEY=production-secret-key
 JWT_SECRET_KEY=production-jwt-secret-key
 EOL
     echo ".env file created. Please update it with your actual database credentials."
-    echo "Edit the .env file before proceeding."
     exit 1
 fi
 
-# Test database connection using test_db.py script
-echo "Testing database connection..."
-python test_db.py
-
-# Check if test was successful (ignoring the specific exit code check that was unnecessarily complex)
-if [ $? -ne 0 ]; then
-    echo "Database connection failed. Please check your .env file and ensure PostgreSQL is running."
+# Ensure database exists
+echo "Ensuring database exists..."
+if ! python create_db.py; then
+    echo "❌ Failed to ensure database exists. Exiting."
     exit 1
 fi
 
-# Check if tables exist using a simplified approach
-echo "Checking if database tables exist..."
-python - << EOF
-import os
-from sqlalchemy import inspect
-
-# Load env vars
-env_vars = {}
-with open('.env', 'r') as f:
-    for line in f:
-        line = line.strip()
-        if line and not line.startswith('#'):
-            key, value = line.split('=', 1)
-            os.environ[key] = value
-
-from app import db, create_app
-
-app = create_app()
-with app.app_context():
-    inspector = inspect(db.engine)
-    tables = inspector.get_table_names()
-    if 'users' in tables:
-        print("Database tables already exist.")
-        exit(0)
-    else:
-        print("Tables do not exist. Need to create them.")
-        exit(2)
-EOF
-
-# Capture the exit code
-DB_STATUS=$?
-
-# If tables don't exist (exit code 2), run create_db.py
-if [ $DB_STATUS -eq 2 ]; then
-    echo "Creating database tables..."
-    python create_db.py
-    
-    echo "Would you like to seed the database with sample data? (y/n)"
-    read -r answer
-    if [ "$answer" == "y" ] || [ "$answer" == "Y" ]; then
-        echo "Seeding database with sample data..."
-        python seed_db.py
-    fi
+# Seed the database
+echo "Seeding the database with test data..."
+if ! python seed_db.py; then
+    echo "❌ Failed to seed the database. Exiting."
+    exit 1
 fi
 
 # Start the server

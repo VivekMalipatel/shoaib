@@ -33,31 +33,22 @@ JWT_SECRET_KEY=production-jwt-secret-key
     exit 1
 }
 
-# Run test_db.py
-Write-Host "Testing database connection..."
-python test_db.py
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Database connection failed. Please check your .env file and ensure PostgreSQL is running."
+# Ensure database exists
+Write-Host "Ensuring database exists..."
+try {
+    python create_db.py
+} catch {
+    Write-Host "❌ Failed to ensure database exists. Exiting."
     exit 1
 }
 
-# Check if tables exist
-Write-Host "Checking if database tables exist..."
-python check_tables.py
-$DB_STATUS = $LASTEXITCODE
-
-$DB_STATUS = $LASTEXITCODE
-
-# If tables don't exist, run create_db.py
-if ($DB_STATUS -eq 2) {
-    Write-Host "Creating database tables..."
-    python create_db.py
-
-    $seed = Read-Host "Would you like to seed the database with sample data? (y/n)"
-    if ($seed -eq "y" -or $seed -eq "Y") {
-        Write-Host "Seeding database with sample data..."
-        python seed_db.py
-    }
+# Seed the database
+Write-Host "Seeding the database with test data..."
+try {
+    python seed_db.py
+} catch {
+    Write-Host "❌ Failed to seed the database. Exiting."
+    exit 1
 }
 
 # Start the Flask server

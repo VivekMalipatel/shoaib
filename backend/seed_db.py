@@ -6,6 +6,7 @@ Run this script after initializing the database to have test accounts ready.
 """
 
 import os
+from sqlalchemy import inspect
 
 # Manually read the .env file
 if os.path.exists('.env'):
@@ -23,20 +24,28 @@ from werkzeug.security import generate_password_hash
 
 def seed_database():
     app = create_app()
-    
+
     with app.app_context():
+        print("Checking if database tables exist...")
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+
+        if not tables:
+            print("No tables found in the database. Please initialize the database first.")
+            return
+
         print("Checking for existing users...")
-        
-        # Only seed if the database is empty or missing our test users
+
+        # Only seed if the database is missing our test users
         doctor_user = User.query.filter_by(username='doctor').first()
         patient_user = User.query.filter_by(username='patient').first()
-        
+
         if doctor_user and patient_user:
             print("Test users already exist in the database.")
             return
-        
+
         print("Creating test users...")
-        
+
         # Create test doctor
         if not doctor_user:
             doctor = User(
@@ -51,7 +60,7 @@ def seed_database():
             )
             db.session.add(doctor)
             print("Created test doctor: username=doctor, password=doctor123")
-        
+
         # Create test patient
         if not patient_user:
             patient = User(
@@ -64,7 +73,7 @@ def seed_database():
             )
             db.session.add(patient)
             print("Created test patient: username=patient, password=patient123")
-        
+
         # Add more test users if needed
         # Create another doctor
         if not User.query.filter_by(username='doctor2').first():
@@ -80,7 +89,7 @@ def seed_database():
             )
             db.session.add(doctor2)
             print("Created test doctor: username=doctor2, password=doctor123")
-        
+
         # Create another patient
         if not User.query.filter_by(username='patient2').first():
             patient2 = User(
@@ -93,7 +102,7 @@ def seed_database():
             )
             db.session.add(patient2)
             print("Created test patient: username=patient2, password=patient123")
-        
+
         # Commit the changes to the database
         db.session.commit()
         print("Database seeded successfully!")
