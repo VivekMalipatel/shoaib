@@ -141,6 +141,7 @@ class Availability(db.Model):
     start_time = db.Column(db.String(10), nullable=False)  # Changed from time_slots to match schema
     end_time = db.Column(db.String(10), nullable=False)  # Added to match schema
     is_available = db.Column(db.Boolean, default=True, nullable=False)  # Added to match schema
+    available_slots = db.Column(db.JSON, default=list, nullable=True)  # New field for individual time slots
     
     def to_dict(self):
         return {
@@ -150,5 +151,6 @@ class Availability(db.Model):
             'date': self.date.isoformat() if self.date else None,
             'startTime': self.start_time,
             'endTime': self.end_time,
-            'isAvailable': self.is_available
+            'isAvailable': self.is_available,
+            'availableSlots': self.available_slots
         }

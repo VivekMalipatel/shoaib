@@ -197,8 +197,35 @@ def add_doctor_availability(doctor_id):
     
     data = request.get_json() or {}
     
-    if not all(k in data for k in ('dayOfWeek', 'startTime', 'endTime', 'isAvailable')):
+    # Check for required fields - support both the old format and new format with availableSlots
+    required_fields = ('dayOfWeek', 'isAvailable')
+    if not all(k in data for k in required_fields):
         return jsonify({'error': 'Missing required fields'}), 400
+    
+    # Check for either availableSlots or the start/end time pair
+    if 'availableSlots' not in data and not all(k in data for k in ('startTime', 'endTime')):
+        return jsonify({'error': 'Missing required fields. Either provide availableSlots or startTime/endTime'}), 400
+    
+    # Set default startTime and endTime when using availableSlots
+    if 'availableSlots' in data and isinstance(data['availableSlots'], list) and data['availableSlots']:
+        # If we have available slots and no start/end times, calculate them from the slots
+        if 'startTime' not in data or 'endTime' not in data:
+            # Sort slots to find earliest and latest times
+            sorted_slots = sorted(data['availableSlots'])
+            if sorted_slots:
+                data['startTime'] = sorted_slots[0]
+                
+                # Get the last slot and add 30 minutes for the endTime
+                latest_slot = sorted_slots[-1]
+                hour, minute = map(int, latest_slot.split(':'))
+                
+                # Add 30 minutes
+                minute += 30
+                if minute >= 60:
+                    hour += 1
+                    minute -= 60
+                
+                data['endTime'] = f"{hour:02d}:{minute:02d}"
     
     # If date is provided, we're dealing with a specific date availability
     specific_date = None
@@ -221,11 +248,15 @@ def add_doctor_availability(doctor_id):
             date=None  # No specific date
         ).first()
     
+    # Extract available_slots from data
+    available_slots = data.get('availableSlots', [])
+    
     if existing:
         # Update existing availability
         existing.start_time = data['startTime']
         existing.end_time = data['endTime']
         existing.is_available = data['isAvailable']
+        existing.available_slots = available_slots
         db.session.commit()
         return jsonify(existing.to_dict()), 200
     else:
@@ -236,7 +267,8 @@ def add_doctor_availability(doctor_id):
             date=specific_date,
             start_time=data['startTime'],
             end_time=data['endTime'],
-            is_available=data['isAvailable']
+            is_available=data['isAvailable'],
+            available_slots=available_slots
         )
         db.session.add(availability)
         db.session.commit()
