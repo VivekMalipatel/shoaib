@@ -41,6 +41,8 @@ class User(db.Model):
     allergies = db.Column(db.Text)
     current_medications = db.Column(db.Text)
     blood_type = db.Column(db.String(10))
+    height = db.Column(db.Float)  # Height in cm
+    weight = db.Column(db.Float)  # Weight in kg
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -94,7 +96,9 @@ class User(db.Model):
                 'medicalHistory': self.medical_history,
                 'allergies': self.allergies,
                 'currentMedications': self.current_medications,
-                'bloodType': self.blood_type
+                'bloodType': self.blood_type,
+                'height': self.height,
+                'weight': self.weight
             })
             
         return data

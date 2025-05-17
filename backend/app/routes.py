@@ -475,7 +475,9 @@ def update_profile():
         'medicalHistory': 'medical_history',
         'allergies': 'allergies',
         'currentMedications': 'current_medications',
-        'bloodType': 'blood_type'
+        'bloodType': 'blood_type',
+        'height': 'height',
+        'weight': 'weight'
     }
     
     # Update common fields
