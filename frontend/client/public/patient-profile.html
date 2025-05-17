@@ -401,14 +401,14 @@
                     <div class="form-row">
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="emergencyContact">Emergency Contact Name</label>
-                                <input type="text" id="emergencyContact" name="emergencyContact">
+                                <label for="emergencyContactName">Emergency Contact Name</label>
+                                <input type="text" id="emergencyContactName" name="emergencyContactName">
                             </div>
                         </div>
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="emergencyPhone">Emergency Contact Phone</label>
-                                <input type="tel" id="emergencyPhone" name="emergencyPhone">
+                                <label for="emergencyContactPhone">Emergency Contact Phone</label>
+                                <input type="tel" id="emergencyContactPhone" name="emergencyContactPhone">
                             </div>
                         </div>
                     </div>
@@ -602,6 +602,8 @@
                     }
                 }
                 
+                console.log('Sending profile update:', updatedProfile);
+                
                 // Send update request
                 fetch(API_ENDPOINTS.profile, {
                     method: 'PUT',
@@ -614,7 +616,11 @@
                 })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Failed to update profile');
+                        console.error('Error status:', response.status);
+                        return response.json().then(err => {
+                            console.error('Error details:', err);
+                            throw new Error('Failed to update profile');
+                        });
                     }
                     return response.json();
                 })
@@ -626,6 +632,7 @@
                     populateViewMode(updatedUser);
                     
                     // Show success message
+                    successMessage.textContent = 'Profile updated successfully!';
                     successMessage.style.display = 'block';
                     
                     // Switch back to view mode after a delay
@@ -637,6 +644,7 @@
                 })
                 .catch(error => {
                     console.error('Error updating profile:', error);
+                    errorMessage.textContent = 'An error occurred while saving your profile.';
                     errorMessage.style.display = 'block';
                 });
             });
@@ -679,8 +687,8 @@
                 document.getElementById('view-blood-type').textContent = user.bloodType || 'Not provided';
                 document.getElementById('view-height').textContent = user.height || 'Not provided';
                 document.getElementById('view-weight').textContent = user.weight || 'Not provided';
-                document.getElementById('view-emergency-contact').textContent = user.emergencyContact || 'Not provided';
-                document.getElementById('view-emergency-phone').textContent = user.emergencyPhone || 'Not provided';
+                document.getElementById('view-emergency-contact').textContent = user.emergencyContactName || 'Not provided';
+                document.getElementById('view-emergency-phone').textContent = user.emergencyContactPhone || 'Not provided';
                 document.getElementById('view-medical-history').textContent = user.medicalHistory || 'None provided';
                 document.getElementById('view-allergies').textContent = user.allergies || 'None provided';
                 document.getElementById('view-medications').textContent = user.currentMedications || 'None provided';
@@ -709,8 +717,8 @@
                 document.getElementById('bloodType').value = user.bloodType || '';
                 document.getElementById('height').value = user.height || '';
                 document.getElementById('weight').value = user.weight || '';
-                document.getElementById('emergencyContact').value = user.emergencyContact || '';
-                document.getElementById('emergencyPhone').value = user.emergencyPhone || '';
+                document.getElementById('emergencyContactName').value = user.emergencyContactName || '';
+                document.getElementById('emergencyContactPhone').value = user.emergencyContactPhone || '';
                 document.getElementById('medicalHistory').value = user.medicalHistory || '';
                 document.getElementById('allergies').value = user.allergies || '';
                 document.getElementById('currentMedications').value = user.currentMedications || '';
