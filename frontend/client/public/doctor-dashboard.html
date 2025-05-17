@@ -143,26 +143,42 @@
     </style>
 </head>
 <body>
-    <header>
-        <h1>CareBridge</h1>
+    <header style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <!-- SVG Logo -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="width: 24px; height: 24px; color: white;"
+          >
+            <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+          </svg>
+          <h1 style="margin: 0; color: white;">CareBridge</h1>
+        </div>
+      
         <nav class="navbar" style="display: flex; align-items: center; gap: 1rem;">
-            <a href="/doctor-dashboard.html" style="color: white;">Dashboard</a>
-            <a href="/doctor-appointments.html" style="color: white;">Appointments</a>
-            <a href="/doctor-availability.html" style="color: white;">Availability</a>
-            <a href="/doctor-profile.html" style="color: white;">My Profile</a>
-            <div class="profile-dropdown">
-                <div class="profile-icon" id="profile-icon">D</div>
-                <div class="dropdown-content">
-                    <div class="dropdown-header">
-                        <div class="user-name" id="dropdown-name">Dr. John Doe</div>
-                        <div class="user-email" id="dropdown-email">doctor@example.com</div>
-                    </div>
-                    <a href="/doctor-profile.html" class="dropdown-link">Profile</a>
-                    <a href="#" id="logout-btn" class="dropdown-link logout">Logout</a>
-                </div>
+          <a href="/doctor-dashboard.html" style="color: white;">Dashboard</a>
+          <a href="/doctor-appointments.html" style="color: white;">Appointments</a>
+          <a href="/doctor-availability.html" style="color: white;">Availability</a>
+          <a href="/doctor-profile.html" style="color: white;">My Profile</a>
+          <div class="profile-dropdown">
+            <div class="profile-icon" id="profile-icon">D</div>
+            <div class="dropdown-content">
+              <div class="dropdown-header">
+                <div class="user-name" id="dropdown-name">Dr. John Doe</div>
+                <div class="user-email" id="dropdown-email">doctor@example.com</div>
+              </div>
+              <a href="/doctor-profile.html" class="dropdown-link">Profile</a>
+              <a href="#" id="logout-btn" class="dropdown-link logout">Logout</a>
             </div>
+          </div>
         </nav>
-    </header>
+      </header>
 
     <div class="container">
         <div class="welcome-panel">

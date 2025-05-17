@@ -150,29 +150,86 @@
             background-color: #cbd5e0;
             border-radius: 6px;
         }
+
+        .carousel-container {
+        width: 100%;
+        max-height: 500px;
+        overflow: hidden;
+        position: relative;
+        margin-bottom: 2rem;
+        }
+
+        .carousel {
+  position: relative;
+  width: 100%;
+  height: 500px;
+}
+
+.carousel-slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+  z-index: 0;
+}
+
+.carousel-slide.active {
+  opacity: 1;
+  z-index: 1;
+}
     </style>
 </head>
 <body>
-    <header>
-        <h1>CareBridge</h1>
+    <header style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <!-- SVG Logo -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="logo-icon"
+            style="width: 24px; height: 24px;"
+          >
+            <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+          </svg>
+          <h1 style="margin: 0; color: white;">CareBridge</h1>
+        </div>
+      
         <nav class="navbar" style="display: flex; align-items: center; gap: 1rem;">
-            <a href="/patient-dashboard.html" style="color: white;">Dashboard</a>
-            <a href="/patient-appointments.html" style="color: white;">My Appointments</a>
-            <a href="/patient-find-doctors.html" style="color: white;">Find Doctors</a>
-            <a href="/patient-profile.html" style="color: white;">My Profile</a>
-            <div class="profile-dropdown">
-                <div class="profile-icon" id="profile-icon">P</div>
-                <div class="dropdown-content">
-                    <div class="dropdown-header">
-                        <div class="user-name" id="dropdown-name">John Doe</div>
-                        <div class="user-email" id="dropdown-email">patient@example.com</div>
-                    </div>
-                    <a href="/patient-profile.html" class="dropdown-link">Profile</a>
-                    <a href="#" id="logout-btn" class="dropdown-link logout">Logout</a>
-                </div>
+          <a href="/patient-dashboard.html" style="color: white;">Dashboard</a>
+          <a href="/patient-appointments.html" style="color: white;">My Appointments</a>
+          <a href="/patient-find-doctors.html" style="color: white;">Find Doctors</a>
+          <a href="/patient-profile.html" style="color: white;">My Profile</a>
+          <div class="profile-dropdown">
+            <div class="profile-icon" id="profile-icon">P</div>
+            <div class="dropdown-content">
+              <div class="dropdown-header">
+                <div class="user-name" id="dropdown-name">John Doe</div>
+                <div class="user-email" id="dropdown-email">patient@example.com</div>
+              </div>
+              <a href="/patient-profile.html" class="dropdown-link">Profile</a>
+              <a href="#" id="logout-btn" class="dropdown-link logout">Logout</a>
             </div>
+          </div>
         </nav>
-    </header>
+      </header>
+
+      <div class="carousel-container">
+        <div class="carousel">
+          <img src="/images/ig1.jpg" class="carousel-slide active" alt="Hospital Exterior">
+          <img src="/images/ig2.jpg" class="carousel-slide" alt="Reception Area">
+          <img src="/images/ig3.jpg" class="carousel-slide" alt="Medical Team">
+        </div>
+      </div>
 
     <div class="container">
         <div class="welcome-panel">
@@ -528,5 +585,29 @@
             }
         });
     </script>
+
+<script>
+    const slides = document.querySelectorAll('.carousel-slide');
+    let currentSlide = 0;
+  
+    function showSlide(index) {
+      slides.forEach((slide, i) => {
+        slide.classList.remove('active');
+        if (i === index) {
+          slide.classList.add('active');
+        }
+      });
+    }
+  
+    function nextSlide() {
+      currentSlide = (currentSlide + 1) % slides.length;
+      showSlide(currentSlide);
+    }
+  
+    // Auto-play every 5 seconds
+    setInterval(nextSlide, 5000);
+  </script>
+
+
 </body>
 </html>
